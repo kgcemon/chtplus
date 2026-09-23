@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Status-bar icon for push notifications. OneSignal looks for a drawable with
+    exactly this name and falls back to the launcher icon when it is missing,
+    which Android renders as a plain white square.
+
+    Android masks notification icons to a single colour, so this must be a
+    white-on-transparent silhouette — colour here would be discarded anyway.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM17,13h-4v4h-2v-4H7v-2h4V7h2v4h4v2z" />
+</vector>
