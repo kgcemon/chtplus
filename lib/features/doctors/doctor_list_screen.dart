@@ -2,19 +2,54 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/dialogs.dart';
 import '../../data/doctor_repository.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/catalog_providers.dart';
 import '../../providers/feature_providers.dart';
-import '../../router.dart';
+import '../home/widgets/home_header.dart';
+import '../home/widgets/quick_nav.dart';
 import '../widgets/cards.dart';
-import '../widgets/form_fields.dart';
+import '../widgets/site_layout.dart';
 
+/// Symptom shortcuts from the site's `DepartmentSymptomPicker`: each searches
+/// for the department keyword that treats it.
+const _symptoms = <(String, String, String)>[
+  ('🤒', 'Fever, cold & cough', 'মেডিসিন'),
+  ('👶', 'Children’s problems', 'শিশু'),
+  ('🧴', 'Skin diseases & allergies', 'চর্ম'),
+  ('❤️', 'Heart disease', 'হৃদ'),
+  ('🤰', 'Gynecology & pregnancy', 'স্ত্রীরোগ'),
+  ('🦷', 'Dental problems', 'দাঁত'),
+  ('👁️', 'Eye problems', 'চোখ'),
+  ('🦴', 'Bone & joint pain', 'অর্থো'),
+  ('🩸', 'Diabetes & hormones', 'ডায়াবেটিস'),
+  ('🫘', 'Kidney & urology problems', 'কিডনি'),
+  ('🧠', 'Mental health', 'মানসিক'),
+  ('👂', 'Nose, ear & throat', 'ইএনটি'),
+];
+
+/// Best-effort emoji for a free-text department name, as the site guesses it.
+String _departmentIcon(String name) {
+  bool has(List<String> words) => words.any(name.contains);
+  if (has(['শিশু'])) return '👶';
+  if (has(['স্ত্রী', 'গাইনি', 'গর্ভ'])) return '🤰';
+  if (has(['হৃদ', 'কার্ডিও'])) return '❤️';
+  if (has(['চর্ম', 'স্কিন'])) return '🧴';
+  if (has(['দাঁত', 'ডেন্টাল'])) return '🦷';
+  if (has(['চোখ', 'চক্ষু'])) return '👁️';
+  if (has(['হাড়', 'অর্থো'])) return '🦴';
+  if (has(['কিডনি', 'ইউরো'])) return '🫘';
+  if (has(['মস্তিষ্ক', 'নিউরো'])) return '🧠';
+  if (has(['ক্যান্সার', 'অনকো'])) return '🎗️';
+  if (has(['মানসিক', 'সাইকিয়া'])) return '🧠';
+  if (has(['নাক', 'কান', 'গলা', 'ইএনটি'])) return '👂';
+  return '🩺';
+}
+
+/// Laid out like the site's "Doctor Appointments" page: a search box with
+/// Division / Symptoms tile grids, a filter card, then doctors two to a row.
 class DoctorListScreen extends ConsumerStatefulWidget {
   const DoctorListScreen({super.key});
 
@@ -23,8 +58,9 @@ class DoctorListScreen extends ConsumerStatefulWidget {
 }
 
 class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
-  final _search = TextEditingController();
+  late final _search = TextEditingController(text: ref.read(doctorFiltersProvider).q);
   Timer? _debounce;
+  bool _symptomTab = false;
 
   @override
   void dispose() {
@@ -33,13 +69,16 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
     super.dispose();
   }
 
+  void _update(DoctorFilters Function(DoctorFilters) change) {
+    final notifier = ref.read(doctorFiltersProvider.notifier);
+    notifier.state = change(notifier.state);
+  }
+
   void _onSearchChanged(String value) {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
       final trimmed = value.trim();
-      ref.read(doctorFiltersProvider.notifier).state = ref
-          .read(doctorFiltersProvider)
-          .copyWith(q: trimmed.isEmpty ? null : trimmed);
+      _update((f) => f.copyWith(q: trimmed.isEmpty ? null : trimmed));
     });
   }
 
@@ -48,265 +87,217 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
     final filters = ref.watch(doctorFiltersProvider);
     final doctors = ref.watch(doctorsProvider);
     final departments = ref.watch(diseaseDepartmentsProvider).valueOrNull ?? const [];
-    final signedIn = ref.watch(isSignedInProvider);
+    final organizations = ref.watch(organizationsProvider).valueOrNull ?? const [];
+    final hasFilters =
+        filters.organizationId != null || filters.district != null || filters.area != null;
+
+    const tileGrid = SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 3,
+      mainAxisExtent: 120,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+    );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Doctors'),
-        actions: [
-          if (signedIn)
-            IconButton(
-              tooltip: 'My appointments',
-              onPressed: () => context.push(Routes.myAppointments),
-              icon: const Icon(Icons.event_note_outlined),
-            ),
-          IconButton(
-            tooltip: 'Filters',
-            onPressed: () => AppDialogs.sheet<void>(
-              context,
-              child: _DoctorFilterSheet(
-                initial: filters,
-                onApply: (value) =>
-                    ref.read(doctorFiltersProvider.notifier).state = value,
-              ),
-            ),
-            icon: Badge(
-              isLabelVisible: filters.district != null ||
-                  filters.area != null ||
-                  filters.organizationId != null,
-              backgroundColor: AppColors.amber,
-              smallSize: 8,
-              child: const Icon(Icons.tune_rounded),
-            ),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(102),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                child: TextField(
-                  controller: _search,
-                  onChanged: _onSearchChanged,
-                  textInputAction: TextInputAction.search,
-                  decoration: const InputDecoration(
-                    hintText: 'Search by name or specialty…',
-                    prefixIcon: Icon(Icons.search_rounded, size: 20),
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 44,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  children: [
-                    _Chip(
-                      label: 'All departments',
-                      selected: filters.departmentId == null,
-                      onTap: () => ref.read(doctorFiltersProvider.notifier).state =
-                          filters.copyWith(departmentId: null),
-                    ),
-                    for (final department in departments)
-                      _Chip(
-                        label: department.name,
-                        selected: filters.departmentId == department.id,
-                        onTap: () => ref.read(doctorFiltersProvider.notifier).state =
-                            filters.copyWith(departmentId: department.id),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(doctorsProvider);
           await ref.read(doctorsProvider.future);
         },
-        child: doctors.when(
-          loading: () => ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: 6,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (_, __) => const Row(
-              children: [
-                SkeletonBox(width: 54, height: 54, radius: 27),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SkeletonBox(width: 160, height: 13),
-                      SizedBox(height: 8),
-                      SkeletonBox(width: 110, height: 10),
+        child: CustomScrollView(
+          slivers: [
+            const HomeHeader(),
+            const SliverToBoxAdapter(
+              child: PageHead(
+                title: Text('Doctor Appointments'),
+                subtitle: 'List of experienced doctors',
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: FilterCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _search,
+                      onChanged: _onSearchChanged,
+                      textInputAction: TextInputAction.search,
+                      decoration: const InputDecoration(
+                        hintText: 'Search by doctor name or department',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        _Pill(
+                          label: 'Division',
+                          active: !_symptomTab,
+                          onTap: () => setState(() => _symptomTab = false),
+                        ),
+                        const SizedBox(width: 8),
+                        _Pill(
+                          label: 'Symptoms',
+                          active: _symptomTab,
+                          onTap: () => setState(() => _symptomTab = true),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    if (!_symptomTab && departments.isEmpty)
+                      const Text(
+                        'No departments have been added yet',
+                        style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                      )
+                    else
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        gridDelegate: tileGrid,
+                        itemCount: _symptomTab ? _symptoms.length : departments.length,
+                        itemBuilder: (context, index) {
+                          if (_symptomTab) {
+                            final (emoji, label, q) = _symptoms[index];
+                            return HomeTile(
+                              emoji: emoji,
+                              label: label,
+                              onTap: () {
+                                _search.text = q;
+                                _update((f) => f.copyWith(q: q, departmentId: null));
+                              },
+                            );
+                          }
+                          final d = departments[index];
+                          final selected = filters.departmentId == d.id;
+                          return HomeTile(
+                            emoji: _departmentIcon(d.name),
+                            label: d.name,
+                            selected: selected,
+                            // Tapping the chosen department again clears it.
+                            onTap: () => _update(
+                              (f) => f.copyWith(departmentId: selected ? null : d.id),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: FilterCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FilterSelect(
+                      title: 'Hospital / clinic',
+                      value: filters.organizationId,
+                      onChanged: (v) => _update((f) => f.copyWith(organizationId: v)),
+                      options: [
+                        const FilterOption(null, 'All hospitals / clinics'),
+                        for (final o in organizations) FilterOption(o.id, o.name),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DistrictFilterSelect(
+                            value: filters.district,
+                            onChanged: (v) => _update((f) => f.copyWith(district: v, area: null)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: AreaFilterSelect(
+                            districtName: filters.district,
+                            value: filters.area,
+                            onChanged: (v) => _update((f) => f.copyWith(area: v)),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (hasFilters) ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SiteButton(
+                          label: 'Reset',
+                          outlined: true,
+                          onPressed: () => _update(
+                            (f) => f.copyWith(organizationId: null, district: null, area: null),
+                          ),
+                        ),
+                      ),
                     ],
+                  ],
+                ),
+              ),
+            ),
+            ...doctors.when(
+              loading: () => const [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Center(child: CircularProgressIndicator()),
                   ),
                 ),
               ],
-            ),
-          ),
-          error: (error, _) => ListView(
-            children: [
-              const SizedBox(height: 70),
-              ErrorView(
-                message: '$error',
-                onRetry: () => ref.invalidate(doctorsProvider),
-              ),
-            ],
-          ),
-          data: (items) {
-            if (items.isEmpty) {
-              return ListView(
-                children: [
-                  const SizedBox(height: 60),
-                  EmptyState(
-                    icon: Icons.medical_services_outlined,
-                    title: 'No doctors found',
-                    message: filters.hasActiveFilters
-                        ? 'Try a different department, hospital or district.'
-                        : 'No doctors are listed yet.',
-                    actionLabel: filters.hasActiveFilters ? 'Clear filters' : null,
-                    onAction: filters.hasActiveFilters
-                        ? () => ref.read(doctorFiltersProvider.notifier).state =
-                            const DoctorFilters()
-                        : null,
+              error: (error, _) => [
+                SliverToBoxAdapter(
+                  child: ErrorView(
+                    message: '$error',
+                    onRetry: () => ref.invalidate(doctorsProvider),
                   ),
-                ],
-              );
-            }
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, index) => DoctorCard(doctor: items[index]),
-            );
-          },
+                ),
+              ],
+              data: (items) => items.isEmpty
+                  ? const [SliverToBoxAdapter(child: EmptyNote('No doctors have been added'))]
+                  : [
+                      SliverCardGrid(
+                        itemCount: items.length,
+                        itemBuilder: (context, index) =>
+                            DoctorCard(doctor: items[index], compact: true),
+                      ),
+                    ],
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
         ),
       ),
     );
   }
 }
 
-class _DoctorFilterSheet extends ConsumerStatefulWidget {
-  const _DoctorFilterSheet({required this.initial, required this.onApply});
-
-  final DoctorFilters initial;
-  final ValueChanged<DoctorFilters> onApply;
-
-  @override
-  ConsumerState<_DoctorFilterSheet> createState() => _DoctorFilterSheetState();
-}
-
-class _DoctorFilterSheetState extends ConsumerState<_DoctorFilterSheet> {
-  late DoctorFilters _value = widget.initial;
-
-  @override
-  Widget build(BuildContext context) {
-    final organizations = ref.watch(organizationsProvider).valueOrNull ?? const [];
-
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SheetHeader(
-            title: 'Filter doctors',
-            trailing: TextButton(
-              onPressed: () => setState(
-                () => _value = DoctorFilters(
-                  departmentId: _value.departmentId,
-                  q: _value.q,
-                ),
-              ),
-              child: const Text('Reset'),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
-            child: Column(
-              children: [
-                FormRowField(
-                  label: 'Hospital / clinic',
-                  child: AppDropdown(
-                    value: _value.organizationId,
-                    options: organizations.map((o) => o.id).toList(),
-                    includeEmpty: true,
-                    emptyLabel: 'Any',
-                    hint: 'Choose a hospital or clinic',
-                    labelBuilder: (id) =>
-                        organizations.firstWhere((o) => o.id == id).name,
-                    onChanged: (value) => setState(
-                      () => _value = _value.copyWith(organizationId: value),
-                    ),
-                  ),
-                ),
-                FormRowField(
-                  label: 'District',
-                  child: DistrictPicker(
-                    value: _value.district,
-                    onChanged: (value) => setState(
-                      () => _value = _value.copyWith(district: value, area: null),
-                    ),
-                  ),
-                ),
-                FormRowField(
-                  label: 'Area',
-                  child: UpazilaPicker(
-                    districtName: _value.district,
-                    value: _value.area,
-                    onChanged: (value) =>
-                        setState(() => _value = _value.copyWith(area: value)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-            child: FilledButton(
-              onPressed: () {
-                widget.onApply(_value);
-                Navigator.of(context).pop();
-              },
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('Show results'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.selected, required this.onTap});
+/// Rounded tab pill (`.pill-nav` button).
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.active, required this.onTap});
 
   final String label;
-  final bool selected;
+  final bool active;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: ChoiceChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-        showCheckmark: false,
-        backgroundColor: Colors.white,
-        selectedColor: AppColors.forestLight,
-        labelStyle: TextStyle(
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
-          color: selected ? AppColors.forestDark : AppColors.text,
+    return Material(
+      color: active ? AppColors.forest : AppColors.surface,
+      shape: StadiumBorder(
+        side: BorderSide(color: active ? AppColors.forest : AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: active ? Colors.white : AppColors.text,
+            ),
+          ),
         ),
-        side: BorderSide(color: selected ? AppColors.forest : AppColors.border),
       ),
     );
   }

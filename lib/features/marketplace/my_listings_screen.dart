@@ -15,6 +15,7 @@ import '../../providers/feature_providers.dart';
 import '../../providers/home_provider.dart';
 import '../widgets/sponsor_sheet.dart';
 import 'sell_screen.dart';
+import '../widgets/site_scaffold.dart';
 
 class MyListingsScreen extends ConsumerWidget {
   const MyListingsScreen({super.key});
@@ -23,8 +24,9 @@ class MyListingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final listings = ref.watch(myListingsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My adverts')),
+    return SiteScaffold(
+      title: 'My Products',
+      subtitle: 'See all the products you added here, edit them or delete them',
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/marketplace/sell');

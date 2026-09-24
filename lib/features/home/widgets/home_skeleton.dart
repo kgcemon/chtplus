@@ -16,7 +16,10 @@ class HomeSkeleton extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SkeletonBox(height: 168, radius: AppRadius.card),
+            const AspectRatio(
+              aspectRatio: 3 / 1,
+              child: SkeletonBox(height: double.infinity, radius: AppRadius.card),
+            ),
             const SizedBox(height: 22),
             GridView.builder(
               shrinkWrap: true,

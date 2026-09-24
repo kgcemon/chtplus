@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/widgets/common.dart';
 import '../../models/user.dart';
 import '../../providers/feature_providers.dart';
+import '../widgets/site_scaffold.dart';
 
 class FollowListScreen extends ConsumerWidget {
   const FollowListScreen({super.key, this.initialTab = 0});
@@ -18,10 +19,9 @@ class FollowListScreen extends ConsumerWidget {
     return DefaultTabController(
       initialIndex: initialTab,
       length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Connections'),
-          bottom: const TabBar(
+      child: SiteScaffold(
+          title: 'Connections',
+          headerBottom: const TabBar(
             indicatorColor: Colors.white,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
@@ -30,7 +30,6 @@ class FollowListScreen extends ConsumerWidget {
               Tab(text: 'Following'),
             ],
           ),
-        ),
         body: follows.when(
           loading: () => const AppLoader(),
           error: (error, _) => ErrorView(

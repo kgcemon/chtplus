@@ -13,6 +13,7 @@ import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../widgets/form_fields.dart';
+import '../widgets/site_scaffold.dart';
 
 /// Two-step booking: pick an open date, then enter the patient's details.
 /// The server re-validates the date, so one taken in the meantime is rejected
@@ -158,10 +159,10 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
       ),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Book a serial'),
-        bottom: PreferredSize(
+    return SiteScaffold(
+      title: 'Apply for a serial',
+      subtitle: _step == 0 ? 'Step 1 of 2 · Choose a date' : 'Step 2 of 2 · Patient details',
+      headerBottom: PreferredSize(
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(
             value: _step == 0 ? 0.5 : 1,
@@ -170,7 +171,6 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
             valueColor: const AlwaysStoppedAnimation(Colors.white),
           ),
         ),
-      ),
       body: _step == 0
           ? _DateStep(
               availability: availability,

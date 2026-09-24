@@ -11,6 +11,7 @@ import '../../core/widgets/common.dart';
 import '../../models/engagement.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
+import '../widgets/site_scaffold.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -20,12 +21,11 @@ class NotificationsScreen extends ConsumerWidget {
     final notifications = ref.watch(notificationsProvider);
     final unread = ref.watch(unreadNotificationCountProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifications'),
-        actions: [
-          if (unread > 0)
-            TextButton(
+    return SiteScaffold(
+      title: 'Notifications',
+      action: unread == 0
+          ? null
+          : TextButton(
               onPressed: () async {
                 try {
                   await ref.read(meRepositoryProvider).markAllNotificationsRead();
@@ -34,11 +34,9 @@ class NotificationsScreen extends ConsumerWidget {
                   if (context.mounted) AppSnackbar.error(context, error.message);
                 }
               },
-              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              style: TextButton.styleFrom(foregroundColor: AppColors.forest),
               child: const Text('Mark all read'),
             ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(notificationsProvider);

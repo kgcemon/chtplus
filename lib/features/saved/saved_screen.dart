@@ -10,6 +10,7 @@ import '../../models/engagement.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import '../widgets/site_scaffold.dart';
 
 class SavedScreen extends ConsumerWidget {
   const SavedScreen({super.key});
@@ -48,8 +49,9 @@ class SavedScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final saved = ref.watch(savedItemsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Saved')),
+    return SiteScaffold(
+      title: 'Saved',
+      subtitle: 'Services, products, donors and biodata you saved',
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(savedItemsProvider);

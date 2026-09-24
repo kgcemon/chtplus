@@ -9,6 +9,7 @@ import '../../core/widgets/common.dart';
 import '../../models/biodata.dart';
 import '../../providers/feature_providers.dart';
 import 'biodata_wizard_screen.dart';
+import '../widgets/site_scaffold.dart';
 
 class MyBiodataScreen extends ConsumerWidget {
   const MyBiodataScreen({super.key});
@@ -17,8 +18,9 @@ class MyBiodataScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final biodata = ref.watch(myBiodataProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My biodata')),
+    return SiteScaffold(
+      title: 'My Biodata',
+      subtitle: 'View, preview, edit or delete the biodata you submitted',
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/biodata/submit');

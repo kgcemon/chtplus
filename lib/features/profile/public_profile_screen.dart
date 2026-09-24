@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/launchers.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
@@ -15,6 +14,7 @@ import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../widgets/cards.dart';
+import '../home/widgets/home_header.dart';
 
 class PublicProfileScreen extends ConsumerWidget {
   const PublicProfileScreen({super.key, required this.userId});
@@ -28,9 +28,9 @@ class PublicProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       body: profile.when(
-        loading: () => const AppLoader(),
+        loading: () => const Scaffold(appBar: SiteAppBar(), body: AppLoader()),
         error: (error, _) => Scaffold(
-          appBar: AppBar(),
+          appBar: const SiteAppBar(),
           body: ErrorView(
             message: '$error',
             onRetry: () => ref.invalidate(publicProfileProvider(userId)),
@@ -54,24 +54,29 @@ class _Content extends ConsumerWidget {
 
     return CustomScrollView(
       slivers: [
-        SliverAppBar(
-          expandedHeight: 180,
-          pinned: true,
-          backgroundColor: AppColors.forestDark,
-          actions: [
-            IconButton(
-              onPressed: () => Launchers.shareWebLink(
-                '/u/${profile.id}',
-                title: profile.name,
+        const HomeHeader(),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                height: 150,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.forestDark, AppColors.forest],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: (profile.coverPhotoUrl ?? '').isEmpty
+                    ? null
+                    : AppNetworkImage(
+                        url: profile.coverPhotoUrl,
+                        width: double.infinity,
+                        height: 150,
+                      ),
               ),
-              icon: const Icon(Icons.share_outlined),
-            ),
-          ],
-          flexibleSpace: FlexibleSpaceBar(
-            background: AppNetworkImage(
-              url: profile.coverPhotoUrl,
-              fit: BoxFit.cover,
-              placeholderIcon: Icons.landscape_outlined,
             ),
           ),
         ),

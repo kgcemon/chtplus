@@ -13,10 +13,15 @@ import '../../providers/catalog_providers.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../providers/home_provider.dart';
+import '../../router.dart';
 import '../widgets/form_fields.dart';
+import '../widgets/site_scaffold.dart';
+import '../widgets/wizard_parts.dart';
 
-/// Post or edit a marketplace advert. Category-specific spec fields appear once
-/// a subcategory with extras is chosen, matching the website's sell wizard.
+/// Post or edit a marketplace advert in the website's two steps: product
+/// details (category, title, condition, place, specs, photos), then price and
+/// contact. Category-specific spec fields appear once a category with extras
+/// is chosen.
 class SellScreen extends ConsumerStatefulWidget {
   const SellScreen({super.key, this.existing});
 
@@ -27,7 +32,11 @@ class SellScreen extends ConsumerStatefulWidget {
 }
 
 class _SellScreenState extends ConsumerState<SellScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final _detailsKey = GlobalKey<FormState>();
+  final _contactKey = GlobalKey<FormState>();
+  int _step = 0;
+  bool _submitted = false;
+
   late final _title = TextEditingController(text: widget.existing?.title ?? '');
   late final _description =
       TextEditingController(text: widget.existing?.description ?? '');
@@ -75,8 +84,9 @@ class _SellScreenState extends ConsumerState<SellScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+  /// Checks the first step before moving on to price & contact.
+  void _next() {
+    if (!(_detailsKey.currentState?.validate() ?? false)) return;
     if (_categoryId == null) {
       AppSnackbar.error(context, 'Please choose a category.');
       return;
@@ -89,6 +99,11 @@ class _SellScreenState extends ConsumerState<SellScreen> {
       AppSnackbar.error(context, 'Please add at least one photo of the item.');
       return;
     }
+    setState(() => _step = 1);
+  }
+
+  Future<void> _submit() async {
+    if (!(_contactKey.currentState?.validate() ?? false)) return;
 
     final price = num.tryParse(_price.text.trim()) ?? -1;
     setState(() => _busy = true);
@@ -134,16 +149,19 @@ class _SellScreenState extends ConsumerState<SellScreen> {
       ref.invalidate(homeFeedProvider);
       if (!mounted) return;
 
-      await AppDialogs.confirm(
-        context,
-        title: _isEdit ? 'Advert updated' : 'Advert submitted',
-        message: _isEdit
-            ? 'Your changes were saved. An admin reviews every edit before the advert is public again.'
-            : 'Thanks! An admin will review your advert and publish it shortly. Track it under "My adverts".',
-        confirmLabel: 'Done',
-        cancelLabel: 'Close',
-      );
-      if (mounted) context.pop(true);
+      if (_isEdit) {
+        await AppDialogs.confirm(
+          context,
+          title: 'Product updated',
+          message:
+              'Your changes were saved. An admin reviews every edit before the product is public again.',
+          confirmLabel: 'Done',
+          cancelLabel: 'Close',
+        );
+        if (mounted) context.pop(true);
+      } else {
+        setState(() => _submitted = true);
+      }
     } on ApiException catch (error) {
       if (mounted) AppSnackbar.error(context, error.message);
     } finally {
@@ -153,281 +171,258 @@ class _SellScreenState extends ConsumerState<SellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return SiteScaffold(
+      title: _isEdit ? 'Edit product' : 'Sell',
+      subtitle: _isEdit
+          ? null
+          : 'Submit an ad with your product’s details; people of Khagrachari can see it after admin approval',
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        children: _submitted
+            ? [
+                WizardSuccess(
+                  title: 'Your ad has been submitted!',
+                  message:
+                      'It will be published for everyone after admin approval. You can check the status on the "My Products" page.',
+                  primaryLabel: 'View my products',
+                  onPrimary: () => context.pushReplacement(Routes.myListings),
+                  secondaryLabel: 'Post another ad',
+                  onSecondary: () => context.pushReplacement('/marketplace/sell'),
+                ),
+              ]
+            : [
+                WizardSteps(labels: const ['Product details', 'Price & contact'], current: _step),
+                const SizedBox(height: 22),
+                if (_step == 0) _detailsStep() else _contactStep(),
+              ],
+      ),
+    );
+  }
+
+  Widget _detailsStep() {
     final categories = ref.watch(marketplaceCategoriesProvider).valueOrNull ?? const [];
     final selected = categories.where((c) => c.id == _categoryId).firstOrNull;
     final parentId = selected == null
         ? null
         : (selected.isTopLevel ? selected.id : selected.parentId);
-    final subcategories =
-        categories.where((c) => c.parentId == parentId).toList();
+    final subcategories = categories.where((c) => c.parentId == parentId).toList();
     final extraFields = extraFieldsFor(_categoryId);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Edit advert' : 'Sell an item')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(13),
-              decoration: BoxDecoration(
-                color: AppColors.forestLight,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-              ),
-              child: const Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_outline_rounded,
-                      size: 18, color: AppColors.forestDark),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'An admin reviews every advert before it goes live. Clear photos and an honest description get approved fastest.',
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        height: 1.5,
-                        color: AppColors.forestDark,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    String label(String id) {
+      final match = categories.firstWhere((c) => c.id == id);
+      return '${match.icon ?? ''} ${match.name}'.trim();
+    }
+
+    return Form(
+      key: _detailsKey,
+      child: WizardCard(
+        children: [
+          WizardField(
+            label: 'Category',
+            required: true,
+            child: AppDropdown(
+              value: parentId,
+              options: categories.where((c) => c.isTopLevel).map((c) => c.id).toList(),
+              hint: 'Select',
+              labelBuilder: label,
+              onChanged: (value) => setState(() {
+                _categoryId = value;
+                _extras.clear();
+              }),
             ),
-            const SizedBox(height: 18),
-            FormRowField(
-              label: 'Category',
-              required: true,
+          ),
+          if (subcategories.isNotEmpty)
+            WizardField(
+              label: 'Subcategory (optional)',
               child: AppDropdown(
-                value: parentId,
-                options:
-                    categories.where((c) => c.isTopLevel).map((c) => c.id).toList(),
-                hint: 'Choose a category',
-                labelBuilder: (id) {
-                  final match = categories.firstWhere((c) => c.id == id);
-                  return '${match.icon ?? ''} ${match.name}'.trim();
-                },
+                value: selected != null && !selected.isTopLevel ? selected.id : null,
+                options: subcategories.map((c) => c.id).toList(),
+                includeEmpty: true,
+                emptyLabel: '— Not specified —',
+                hint: '— Not specified —',
+                labelBuilder: label,
                 onChanged: (value) => setState(() {
-                  _categoryId = value;
+                  _categoryId = value ?? parentId;
                   _extras.clear();
                 }),
               ),
             ),
-            if (subcategories.isNotEmpty)
-              FormRowField(
-                label: 'Subcategory',
-                required: true,
-                child: AppDropdown(
-                  value: selected != null && !selected.isTopLevel ? selected.id : null,
-                  options: subcategories.map((c) => c.id).toList(),
-                  hint: 'Choose a subcategory',
-                  labelBuilder: (id) =>
-                      subcategories.firstWhere((c) => c.id == id).name,
-                  onChanged: (value) => setState(() {
-                    _categoryId = value;
-                    _extras.clear();
-                  }),
-                ),
+          WizardField(
+            label: 'Title',
+            required: true,
+            child: TextFormField(
+              controller: _title,
+              maxLength: 200,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Samsung Galaxy A14, good condition',
+                counterText: '',
               ),
-            FormRowField(
-              label: 'Title',
-              required: true,
-              child: TextFormField(
-                controller: _title,
-                maxLength: 200,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Samsung Galaxy A14, good condition',
-                  counterText: '',
-                ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Enter a title' : null,
-              ),
+              validator: (value) => (value ?? '').trim().isEmpty ? 'Enter a title' : null,
             ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          WizardField(
+            label: 'Condition',
+            required: true,
+            child: AppDropdown(
+              value: _condition,
+              options: marketplaceConditions,
+              onChanged: (value) => setState(() => _condition = value ?? _condition),
+            ),
+          ),
+          WizardField(
+            label: 'District',
+            required: true,
+            child: DistrictPicker(
+              value: _district,
+              includeEmpty: false,
+              onChanged: (value) => setState(() {
+                _district = value;
+                // The old thana belongs to the previous district.
+                _area = null;
+              }),
+            ),
+          ),
+          WizardField(
+            label: 'Thana/Area',
+            required: true,
+            child: UpazilaPicker(
+              districtName: _district,
+              value: _area,
+              includeEmpty: false,
+              onChanged: (value) => setState(() => _area = value),
+            ),
+          ),
+          if (extraFields.isNotEmpty)
+            WizardSubsection(
+              title: 'Product details',
               children: [
-                Expanded(
-                  child: FormRowField(
-                    label: 'Price (৳)',
-                    required: true,
-                    child: TextFormField(
-                      controller: _price,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(hintText: '0'),
-                      validator: (value) {
-                        final parsed = num.tryParse((value ?? '').trim());
-                        if (parsed == null || parsed < 0) return 'Enter a price';
-                        return null;
-                      },
-                    ),
+                for (final field in extraFields)
+                  WizardField(
+                    label: field.label,
+                    child: field.isSelect
+                        ? AppDropdown(
+                            value: _extras[field.key],
+                            options: field.options,
+                            includeEmpty: true,
+                            emptyLabel: 'Select',
+                            onChanged: (value) => setState(() {
+                              if (value == null) {
+                                _extras.remove(field.key);
+                              } else {
+                                _extras[field.key] = value;
+                              }
+                            }),
+                          )
+                        : TextFormField(
+                            initialValue: _extras[field.key],
+                            decoration: InputDecoration(hintText: field.placeholder),
+                            onChanged: (value) {
+                              final trimmed = value.trim();
+                              if (trimmed.isEmpty) {
+                                _extras.remove(field.key);
+                              } else {
+                                _extras[field.key] = trimmed;
+                              }
+                            },
+                          ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FormRowField(
-                    label: 'Condition',
-                    required: true,
-                    child: AppDropdown(
-                      value: _condition,
-                      options: marketplaceConditions,
-                      onChanged: (value) =>
-                          setState(() => _condition = value ?? _condition),
-                    ),
-                  ),
-                ),
               ],
             ),
-            SwitchListTile.adaptive(
-              value: _negotiable,
-              onChanged: (value) => setState(() => _negotiable = value),
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'Price is negotiable',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          WizardField(
+            label: 'Photos (max 4, the first will be the cover photo)',
+            required: !_isEdit,
+            child: PhotoPickerField(
+              maxPhotos: 4,
+              existingUrls: _keepPhotos,
+              newPaths: _newPhotos,
+              onExistingRemoved: (url) => setState(
+                () => _keepPhotos = _keepPhotos.where((u) => u != url).toList(),
               ),
-              activeThumbColor: AppColors.forest,
+              onNewPathsChanged: (paths) => setState(() => _newPhotos = paths),
             ),
-            const SizedBox(height: 8),
-            if (extraFields.isNotEmpty) ...[
-              const Text(
-                'Specifications',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 12),
-              for (final field in extraFields)
-                FormRowField(
-                  label: field.label,
-                  child: field.isSelect
-                      ? AppDropdown(
-                          value: _extras[field.key],
-                          options: field.options,
-                          includeEmpty: true,
-                          emptyLabel: 'Not specified',
-                          onChanged: (value) => setState(() {
-                            if (value == null) {
-                              _extras.remove(field.key);
-                            } else {
-                              _extras[field.key] = value;
-                            }
-                          }),
-                        )
-                      : TextFormField(
-                          initialValue: _extras[field.key],
-                          decoration: InputDecoration(hintText: field.placeholder),
-                          onChanged: (value) {
-                            final trimmed = value.trim();
-                            if (trimmed.isEmpty) {
-                              _extras.remove(field.key);
-                            } else {
-                              _extras[field.key] = trimmed;
-                            }
-                          },
-                        ),
-                ),
-            ],
-            FormRowField(
-              label: 'Description',
-              required: true,
-              hint: 'Age of the item, any faults, what is included, why you are selling.',
-              child: TextFormField(
-                controller: _description,
-                maxLines: 6,
-                maxLength: 2000,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(hintText: 'Describe the item…'),
-                validator: (value) => (value ?? '').trim().length < 20
-                    ? 'Write at least 20 characters'
-                    : null,
-              ),
-            ),
-            FormRowField(
-              label: 'District',
-              required: true,
-              child: DistrictPicker(
-                value: _district,
-                includeEmpty: false,
-                onChanged: (value) => setState(() {
-                  _district = value;
-                  _area = null;
-                }),
-              ),
-            ),
-            FormRowField(
-              label: 'Area (thana)',
-              required: true,
-              child: UpazilaPicker(
-                districtName: _district,
-                value: _area,
-                includeEmpty: false,
-                onChanged: (value) => setState(() => _area = value),
-              ),
-            ),
-            FormRowField(
-              label: 'Your name',
-              required: true,
-              child: TextFormField(
-                controller: _sellerName,
-                maxLength: 150,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(counterText: ''),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Enter your name' : null,
-              ),
-            ),
-            FormRowField(
-              label: 'Contact number',
-              required: true,
-              child: TextFormField(
-                controller: _sellerPhone,
-                keyboardType: TextInputType.phone,
-                maxLength: 30,
-                decoration: const InputDecoration(
-                  hintText: '01XXXXXXXXX',
-                  counterText: '',
-                ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Enter a contact number' : null,
-              ),
-            ),
-            FormRowField(
-              label: 'Photos',
-              required: !_isEdit,
-              hint: 'Up to 4 photos. The first one becomes the cover.',
-              child: PhotoPickerField(
-                maxPhotos: 4,
-                existingUrls: _keepPhotos,
-                newPaths: _newPhotos,
-                onExistingRemoved: (url) => setState(
-                  () => _keepPhotos = _keepPhotos.where((u) => u != url).toList(),
-                ),
-                onNewPathsChanged: (paths) => setState(() => _newPhotos = paths),
-              ),
-            ),
-            const SizedBox(height: 10),
-            FilledButton(
-              onPressed: _busy ? null : _submit,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 52),
-              ),
-              child: _busy
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(_isEdit ? 'Save changes' : 'Submit for review'),
-            ),
-          ],
-        ),
+          ),
+          WizardActions(nextLabel: 'Next step →', onNext: _next),
+        ],
       ),
     );
   }
-}
 
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
+  Widget _contactStep() {
+    return Form(
+      key: _contactKey,
+      child: WizardCard(
+        children: [
+          WizardField(
+            label: 'Price (৳)',
+            required: true,
+            child: TextFormField(
+              controller: _price,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(hintText: '0'),
+              validator: (value) {
+                final parsed = num.tryParse((value ?? '').trim());
+                if (parsed == null || parsed < 0) return 'Enter a price';
+                return null;
+              },
+            ),
+          ),
+          CheckboxListTile(
+            value: _negotiable,
+            onChanged: (value) => setState(() => _negotiable = value ?? false),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+            dense: true,
+            activeColor: AppColors.forest,
+            title: const Text('Price is negotiable', style: TextStyle(fontSize: 14)),
+          ),
+          WizardField(
+            label: 'Description',
+            required: true,
+            child: TextFormField(
+              controller: _description,
+              maxLines: 5,
+              maxLength: 2000,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                hintText: 'Write in detail about the product...',
+              ),
+              validator: (value) =>
+                  (value ?? '').trim().isEmpty ? 'Write a description' : null,
+            ),
+          ),
+          WizardField(
+            label: 'Your name',
+            required: true,
+            child: TextFormField(
+              controller: _sellerName,
+              maxLength: 150,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(counterText: ''),
+              validator: (value) => (value ?? '').trim().isEmpty ? 'Enter your name' : null,
+            ),
+          ),
+          WizardField(
+            label: 'Phone number',
+            required: true,
+            child: TextFormField(
+              controller: _sellerPhone,
+              keyboardType: TextInputType.phone,
+              maxLength: 30,
+              decoration: const InputDecoration(hintText: '01XXXXXXXXX', counterText: ''),
+              validator: (value) =>
+                  (value ?? '').trim().isEmpty ? 'Enter a phone number' : null,
+            ),
+          ),
+          WizardActions(
+            nextLabel: _isEdit ? 'Save changes' : 'Submit ad',
+            busyLabel: _isEdit ? 'Saving...' : 'Submitting...',
+            busy: _busy,
+            onNext: _submit,
+            onBack: () => setState(() => _step = 0),
+          ),
+        ],
+      ),
+    );
+  }
 }

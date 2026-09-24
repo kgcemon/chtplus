@@ -15,6 +15,8 @@ import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../providers/home_provider.dart';
 import '../widgets/form_fields.dart';
+import '../widgets/site_scaffold.dart';
+import '../widgets/wizard_parts.dart';
 
 /// Four-step matrimony biodata wizard, collecting the same field set as the
 /// website's own submission form.
@@ -29,10 +31,10 @@ class BiodataWizardScreen extends ConsumerStatefulWidget {
 
 class _BiodataWizardScreenState extends ConsumerState<BiodataWizardScreen> {
   static const _steps = [
-    'General',
-    'Education & family',
-    'Partner & contact',
-    'Review',
+    'General Information',
+    'Education & Family',
+    'Life Partner & Contact',
+    'Preview',
   ];
 
   late final BiodataDraft _draft = widget.existing == null
@@ -106,51 +108,26 @@ class _BiodataWizardScreenState extends ConsumerState<BiodataWizardScreen> {
         );
         if (leave && context.mounted) context.pop();
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(_isEdit ? 'Edit biodata' : 'Submit biodata'),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(46),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      for (var i = 0; i < _steps.length; i++)
-                        Expanded(
-                          child: Container(
-                            height: 4,
-                            margin: EdgeInsets.only(right: i == _steps.length - 1 ? 0 : 5),
-                            decoration: BoxDecoration(
-                              color: i <= _step
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Step ${_step + 1} of ${_steps.length} · ${_steps[_step]}',
-                      style: const TextStyle(fontSize: 12, color: Colors.white70),
-                    ),
-                  ),
-                ],
-              ),
+      child: SiteScaffold(
+          title: _isEdit ? 'Edit biodata' : 'Submit biodata',
+          subtitle: 'Fill in your details step by step; it is published after admin review',
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: WizardSteps(labels: _steps, current: _step),
             ),
-          ),
+            Expanded(
+              child: switch (_step) {
+                0 => _GeneralStep(draft: _draft, onChanged: () => setState(() {})),
+                1 => _EducationFamilyStep(draft: _draft, onChanged: () => setState(() {})),
+                2 => _PartnerContactStep(draft: _draft, onChanged: () => setState(() {})),
+                _ => _ReviewStep(draft: _draft, onChanged: () => setState(() {})),
+              },
+            ),
+          ],
         ),
-        body: switch (_step) {
-          0 => _GeneralStep(draft: _draft, onChanged: () => setState(() {})),
-          1 => _EducationFamilyStep(draft: _draft, onChanged: () => setState(() {})),
-          2 => _PartnerContactStep(draft: _draft, onChanged: () => setState(() {})),
-          _ => _ReviewStep(draft: _draft, onChanged: () => setState(() {})),
-        },
         bottomNavigationBar: Container(
           decoration: const BoxDecoration(
             color: AppColors.surface,
@@ -169,7 +146,7 @@ class _BiodataWizardScreenState extends ConsumerState<BiodataWizardScreen> {
                         minimumSize: const Size(0, 48),
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                       ),
-                      child: const Text('Back'),
+                      child: const Text('← Previous step'),
                     ),
                     const SizedBox(width: 10),
                   ],
@@ -189,7 +166,7 @@ class _BiodataWizardScreenState extends ConsumerState<BiodataWizardScreen> {
                           : Text(
                               _step == _steps.length - 1
                                   ? (_isEdit ? 'Save changes' : 'Submit for review')
-                                  : 'Continue',
+                                  : 'Next step →',
                             ),
                     ),
                   ),

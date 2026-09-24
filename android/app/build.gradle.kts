@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "xyz.chtplus.app"
+    namespace = "com.chtplus.bd"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -25,7 +25,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "xyz.chtplus.app"
+        applicationId = "com.chtplus.bd"
         // OneSignal and flutter_secure_storage both need API 23+.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion

@@ -2,22 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/api/api_exception.dart';
 import '../../core/theme.dart';
 import '../../core/utils/data_labels.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/launchers.dart';
-import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/photo_gallery.dart';
 import '../../models/listing.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import '../home/widgets/home_header.dart';
 import '../widgets/cards.dart';
-import '../widgets/save_button.dart';
+import '../widgets/detail_parts.dart';
 
+/// A product page laid out like the site's listing page on a phone: category
+/// trail, photo gallery, title, poster, meta, price and description, then the
+/// seller card, product details, safety tips and more from the category.
 class ListingDetailScreen extends ConsumerWidget {
   const ListingDetailScreen({super.key, required this.id});
 
@@ -27,394 +26,287 @@ class ListingDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final listing = ref.watch(listingDetailProvider(id));
 
-    return Scaffold(
-      body: listing.when(
-        loading: () => const _Skeleton(),
-        error: (error, _) => Scaffold(
-          appBar: AppBar(),
-          body: ErrorView(
-            message: '$error',
-            onRetry: () => ref.invalidate(listingDetailProvider(id)),
-          ),
+    return listing.when(
+      loading: () => const Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            HomeHeader(),
+            SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+          ],
         ),
-        data: (item) => _Content(listing: item),
       ),
-      bottomNavigationBar:
-          listing.valueOrNull == null ? null : _ContactBar(listing: listing.value!),
-    );
-  }
-}
-
-class _Content extends ConsumerWidget {
-  const _Content({required this.listing});
-
-  final Listing listing;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final promoted = ref.watch(promotedListingsProvider).valueOrNull ?? const [];
-    final others = promoted.where((l) => l.id != listing.id).toList();
-
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          expandedHeight: 280,
-          pinned: true,
-          backgroundColor: AppColors.forestDark,
-          actions: [
-            IconButton(
-              onPressed: () => Launchers.shareWebLink(
-                '/marketplace/listing/${listing.id}',
-                title: '${listing.title} — ${Fmt.taka(listing.price)}',
-              ),
-              icon: const Icon(Icons.share_outlined),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: SaveButton(
-                targetType: 'marketplace_listing',
-                targetId: listing.id,
-                size: 22,
+      error: (error, _) => Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            const HomeHeader(),
+            SliverFillRemaining(
+              child: ErrorView(
+                message: '$error',
+                onRetry: () => ref.invalidate(listingDetailProvider(id)),
               ),
             ),
           ],
-          flexibleSpace: FlexibleSpaceBar(
-            background: PhotoCarousel(
-              photos: listing.photos,
-              height: 280,
-              placeholderIcon: Icons.inventory_2_outlined,
-            ),
-          ),
         ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        listing.title,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          height: 1.3,
-                        ),
-                      ),
-                    ),
-                    if (listing.paid)
-                      const StatusPill(
-                        label: 'Promoted',
-                        color: AppColors.amber,
-                        icon: Icons.bolt_rounded,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      Fmt.taka(listing.price),
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.forestDark,
-                      ),
-                    ),
-                    if (listing.negotiable) ...[
-                      const SizedBox(width: 9),
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 5),
-                        child: StatusPill(
-                          label: 'Negotiable',
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (listing.condition != null)
-                      StatusPill(label: dataLabel(listing.condition)),
-                    if (listing.categoryName != null)
-                      StatusPill(
-                        label: listing.categoryName!,
-                        color: AppColors.textSecondary,
-                      ),
-                    if (listing.adNumber != null)
-                      StatusPill(
-                        label: 'Ad ${listing.adNumber}',
-                        color: AppColors.textSecondary,
-                      ),
-                  ],
-                ),
-                if (listing.locationLabel.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  InkWell(
-                    onTap: () => Launchers.map(context, listing.locationLabel),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.place_outlined,
-                              size: 17, color: AppColors.forest),
-                          const SizedBox(width: 7),
-                          Expanded(
-                            child: Text(
-                              listing.locationLabel,
-                              style: const TextStyle(fontSize: 13.5),
-                            ),
-                          ),
-                          const Icon(Icons.open_in_new_rounded,
-                              size: 14, color: AppColors.textSecondary),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-                if (listing.specs.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Specifications',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 4),
-                  for (final spec in listing.specs)
-                    LabeledRow(
-                      label: extraAttributeLabel(spec.key),
-                      value: dataLabel(spec.value),
-                    ),
-                ],
-                const SizedBox(height: 20),
-                const Text(
-                  'Description',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  listing.description ?? '',
-                  style: const TextStyle(fontSize: 14, height: 1.6),
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(13),
-                  decoration: BoxDecoration(
-                    color: AppColors.amber.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.card),
-                  ),
-                  child: const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.shield_outlined, size: 18, color: Color(0xFF8A5A00)),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Meet in a public place, check the item before paying, and never send money in advance.',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            height: 1.5,
-                            color: Color(0xFF6B4600),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (listing.userId != null)
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: _SellerCard(listing: listing),
-            ),
-          ),
-        if (others.isNotEmpty) ...[
-          const SliverToBoxAdapter(
-            child: SectionHeader(
-              title: 'Also promoted',
-              subtitle: 'Other items worth a look',
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 262,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: others.length,
-                itemExtent: 178,
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: SizedBox(
-                    width: 168,
-                    child: ListingCard(listing: others[index]),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-        const SliverToBoxAdapter(child: SizedBox(height: 28)),
-      ],
+      ),
+      data: (item) => _Content(
+        listing: item,
+        onRefresh: () async {
+          ref.invalidate(listingDetailProvider(id));
+          await ref.read(listingDetailProvider(id).future);
+        },
+      ),
     );
   }
 }
 
-class _SellerCard extends ConsumerWidget {
+class _Content extends StatelessWidget {
+  const _Content({required this.listing, required this.onRefresh});
+
+  final Listing listing;
+  final Future<void> Function() onRefresh;
+
+  String _label(String? icon, String? name) => '${icon ?? ''} ${name ?? ''}'.trim();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = listing;
+    final area = (l.area ?? '').isNotEmpty ? l.area! : l.locationLabel;
+    final posted = Fmt.date(l.createdAt);
+    void openCategory(String? id) => context.go('${Routes.marketplace}?category=$id');
+
+    final body = <Widget>[
+      Breadcrumb(
+        parts: [
+          ('Marketplace', () => context.go(Routes.marketplace)),
+          if (l.parentCategoryId != null)
+            (
+              _label(l.parentCategoryIcon, l.parentCategoryName),
+              () => openCategory(l.parentCategoryId),
+            ),
+          (_label(l.categoryIcon, l.categoryName), () => openCategory(l.categoryId)),
+        ],
+      ),
+      const SizedBox(height: 16),
+      if (l.paid)
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3D6),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Text(
+            '✨ Sponsored product',
+            style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF9A6700)),
+          ),
+        ),
+      DetailGallery(photos: l.photos, placeholderEmoji: l.categoryIcon ?? '📦'),
+      const SizedBox(height: 20),
+      Text(
+        l.title,
+        style: const TextStyle(fontSize: 18, height: 1.35, fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 10),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: OwnerChip(
+          userId: l.userId,
+          name: l.ownerName,
+          photoUrl: l.ownerPhotoUrl,
+          blueBadge: l.ownerBlueBadge,
+        ),
+      ),
+      const SizedBox(height: 10),
+      Wrap(
+        spacing: 14,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (l.condition != null) Tag(dataLabel(l.condition)),
+          if (area.isNotEmpty) _Meta('📍 $area'),
+          if (posted.isNotEmpty) _Meta('🕓 $posted'),
+        ],
+      ),
+      const SizedBox(height: 14),
+      Text.rich(
+        TextSpan(
+          text: Fmt.taka(l.price),
+          children: [
+            if (l.negotiable)
+              const TextSpan(
+                text: '  (negotiable)',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+          ],
+        ),
+        style: const TextStyle(
+          fontSize: 21,
+          fontWeight: FontWeight.w800,
+          color: AppColors.forestDark,
+        ),
+      ),
+      const SizedBox(height: 22),
+      if (l.specs.isNotEmpty) ...[
+        InfoCard(
+          title: 'Specifications',
+          rows: [
+            for (final s in l.specs) (extraAttributeLabel(s.key), dataLabel(s.value)),
+          ],
+        ),
+        const SizedBox(height: 22),
+      ],
+      const Text('Description', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 8),
+      Text(l.description ?? '', style: const TextStyle(fontSize: 14, height: 1.7)),
+      const SizedBox(height: 22),
+      _SellerCard(listing: l),
+      const SizedBox(height: 16),
+      InfoCard(
+        title: 'Product details',
+        rows: [
+          ('Categories', _label(l.categoryIcon, l.categoryName)),
+          if (l.condition != null) ('Condition', dataLabel(l.condition)),
+          if (area.isNotEmpty) ('Location', '📍 $area'),
+          if (posted.isNotEmpty) ('Posted on', posted),
+          ('Ad number', l.adNumber ?? l.id),
+        ],
+      ),
+      const SizedBox(height: 16),
+      const SafetyBox(
+        title: '⚠️ Safe shopping tips',
+        tips: [
+          'Avoid paying in advance',
+          'Meet the seller in a safe, public place',
+          'Inspect the product carefully and make sure it suits your needs',
+          'Pay only when you are satisfied',
+        ],
+      ),
+      if (l.related.isNotEmpty) ...[
+        const SizedBox(height: 32),
+        const Text(
+          'More products in the same category',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 16),
+        for (var i = 0; i < l.related.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: ListingCard(listing: l.related[i])),
+              const SizedBox(width: 10),
+              Expanded(
+                child: i + 1 < l.related.length
+                    ? ListingCard(listing: l.related[i + 1])
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ];
+
+    return DetailPage(header: const HomeHeader(), onRefresh: onRefresh, children: body);
+  }
+}
+
+class _Meta extends StatelessWidget {
+  const _Meta(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary));
+  }
+}
+
+/// Centered seller card: initial, name with Follow, a big phone button and
+/// "View profile" (`.listing-seller-card`).
+class _SellerCard extends StatelessWidget {
   const _SellerCard({required this.listing});
 
   final Listing listing;
 
-  Future<void> _message(BuildContext context, WidgetRef ref) async {
-    if (!ref.read(isSignedInProvider)) {
-      context.push(Routes.login);
-      return;
-    }
-    try {
-      final conversationId =
-          await ref.read(chatRepositoryProvider).startConversation(listing.userId!);
-      if (context.mounted) {
-        context.push(
-          '/chat/$conversationId?name=${Uri.encodeComponent(listing.sellerName ?? 'Seller')}',
-        );
-      }
-    } on ApiException catch (error) {
-      if (context.mounted) AppSnackbar.error(context, error.message);
-    }
-  }
-
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return AppCard(
-      child: Row(
+  Widget build(BuildContext context) {
+    final name = listing.sellerName ?? 'Seller';
+    final phone = listing.sellerPhone ?? '';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Avatar(name: listing.sellerName, size: 42),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Seller',
-                  style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+          Center(child: Avatar(name: name, size: 64)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  name,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  listing.sellerName ?? 'Seller',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              FollowInline(userId: listing.userId),
+            ],
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Seller',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          if (phone.isNotEmpty)
+            FilledButton(
+              onPressed: () => Launchers.call(context, phone),
+              style: _bigButton(FilledButton.styleFrom(backgroundColor: AppColors.forest)),
+              child: Text('📞 $phone'),
+            ),
+          if (listing.userId != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => context.push('/u/${listing.userId}'),
+              style: _bigButton(
+                OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.forest,
+                  side: const BorderSide(color: AppColors.forest),
                 ),
-              ],
+              ),
+              child: const Text('View profile'),
             ),
-          ),
-          OutlinedButton.icon(
-            onPressed: () => _message(context, ref),
-            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-            label: const Text('Message'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(0, 40),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            onPressed: () => context.push('/u/${listing.userId}'),
-            icon: const Icon(Icons.chevron_right_rounded),
-            color: AppColors.textSecondary,
+          ],
+          const SizedBox(height: 12),
+          const Text(
+            'Contact the seller directly by phone',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11.5, height: 1.5, color: AppColors.textSecondary),
           ),
         ],
       ),
     );
   }
-}
 
-class _ContactBar extends StatelessWidget {
-  const _ContactBar({required this.listing});
-
-  final Listing listing;
-
-  @override
-  Widget build(BuildContext context) {
-    if ((listing.sellerPhone ?? '').isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => Launchers.call(context, listing.sellerPhone),
-                  icon: const Icon(Icons.call_rounded, size: 19),
-                  label: const Text('Call seller'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              OutlinedButton(
-                onPressed: () => Launchers.whatsapp(
-                  context,
-                  listing.sellerPhone,
-                  text: 'Hello, is "${listing.title}" still available on CHT Plus?',
-                ),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(52, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                ),
-                child: const Icon(Icons.chat_rounded, size: 20),
-              ),
-            ],
-          ),
+  ButtonStyle _bigButton(ButtonStyle base) => base.copyWith(
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(12)),
+        minimumSize: const WidgetStatePropertyAll(Size.fromHeight(46)),
+        textStyle: const WidgetStatePropertyAll(
+          TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
         ),
-      ),
-    );
-  }
-}
-
-class _Skeleton extends StatelessWidget {
-  const _Skeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: const [
-        SkeletonBox(height: 280, radius: 0),
-        Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SkeletonBox(height: 20),
-              SizedBox(height: 12),
-              SkeletonBox(width: 140, height: 26),
-              SizedBox(height: 18),
-              SkeletonBox(height: 12),
-              SizedBox(height: 8),
-              SkeletonBox(height: 12),
-              SizedBox(height: 8),
-              SkeletonBox(width: 200, height: 12),
-            ],
-          ),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-      ],
-    );
-  }
+      );
 }

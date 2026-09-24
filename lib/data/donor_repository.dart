@@ -92,6 +92,12 @@ class DonorRepository {
     return (liked: map.flag('liked'), likeCount: map.intOr('likeCount'));
   }
 
+  /// Names of the people who sent this donor a love reaction, newest first.
+  Future<List<String>> likerNames(String id) async {
+    final body = await _api.get('/api/donors/$id/likes');
+    return body is List ? body.map((e) => e.toString()).toList() : const [];
+  }
+
   Future<List<String>> likedDonorIds() async {
     final body = await _api.get('/api/me/donor-likes');
     return body is List ? body.map((e) => e.toString()).toList() : const [];

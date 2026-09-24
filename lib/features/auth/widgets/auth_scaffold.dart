@@ -1,74 +1,160 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme.dart';
 import '../../../core/widgets/app_snackbar.dart';
 import '../../../providers/catalog_providers.dart';
+import '../../../router.dart';
 import '../google_signin_service.dart';
 
-/// Shared chrome for the sign-in, register and reset screens.
+/// Which tab of the sign-in sheet a screen is.
+enum AuthTab { login, register, none }
+
+/// Shared chrome for the sign-in, register and reset screens, drawn like the
+/// site's sign-in popup: "Log in" / "New account" tabs with a round ✕, then
+/// the form. The reset screen ([AuthTab.none]) shows its title instead.
 class AuthScaffold extends StatelessWidget {
   const AuthScaffold({
     super.key,
     required this.title,
     required this.subtitle,
     required this.children,
+    this.tab = AuthTab.none,
   });
 
   final String title;
   final String subtitle;
   final List<Widget> children;
+  final AuthTab tab;
 
   @override
   Widget build(BuildContext context) {
+    void close() {
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      } else {
+        context.go(Routes.home);
+      }
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.text,
-        elevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-      ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(22, 8, 22, 36),
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 36),
           children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: AppColors.forestDark,
-                borderRadius: BorderRadius.circular(15),
-              ),
-              alignment: Alignment.center,
-              child: const Text(
-                'C+',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
+            Row(
+              children: [
+                if (tab == AuthTab.none) ...[
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ] else ...[
+                  Expanded(
+                    child: _TabButton(
+                      label: 'Log in',
+                      active: tab == AuthTab.login,
+                      onTap: () => context.replace(Routes.login),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _TabButton(
+                      label: 'New account',
+                      active: tab == AuthTab.register,
+                      onTap: () => context.replace(Routes.register),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 8),
+                Material(
+                  color: AppColors.bg,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: close,
+                    child: const SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: Icon(Icons.close_rounded, size: 17, color: AppColors.text),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (subtitle.isNotEmpty) ...[
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  height: 1.5,
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 26),
+              const SizedBox(height: 16),
+            ],
             ...children,
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One half of the Log in / New account switch (`.cv-tab`).
+class _TabButton extends StatelessWidget {
+  const _TabButton({required this.label, required this.active, required this.onTap});
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: active ? AppColors.forest : AppColors.bg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: active ? AppColors.forest : AppColors.border),
+      ),
+      child: InkWell(
+        onTap: active ? null : onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: active ? Colors.white : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Grey field caption above an input, as the site's forms label them.
+class FieldLabel extends StatelessWidget {
+  const FieldLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
       ),
     );
   }
@@ -114,6 +200,30 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
 
     return Column(
       children: [
+        OutlinedButton.icon(
+          onPressed: _busy ? null : () => _start(clientId),
+          icon: _busy
+              ? const SizedBox(
+                  width: 17,
+                  height: 17,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text(
+                  'G',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF4285F4),
+                  ),
+                ),
+          label: const Text('Continue with Google'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 46),
+            side: const BorderSide(color: AppColors.border),
+            foregroundColor: AppColors.text,
+            shape: const StadiumBorder(),
+          ),
+        ),
         const SizedBox(height: 18),
         Row(
           children: [
@@ -121,7 +231,7 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Text(
-                'or',
+                'or use your email',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary.withValues(alpha: 0.9),
@@ -132,22 +242,6 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
           ],
         ),
         const SizedBox(height: 18),
-        OutlinedButton.icon(
-          onPressed: _busy ? null : () => _start(clientId),
-          icon: _busy
-              ? const SizedBox(
-                  width: 17,
-                  height: 17,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.g_mobiledata_rounded, size: 26),
-          label: const Text('Continue with Google'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 50),
-            side: const BorderSide(color: AppColors.border),
-            foregroundColor: AppColors.text,
-          ),
-        ),
       ],
     );
   }

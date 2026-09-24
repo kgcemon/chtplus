@@ -8,7 +8,11 @@ final appRemoteConfigProvider = FutureProvider<AppRemoteConfig>(
   (ref) => ref.watch(catalogRepositoryProvider).appConfig(),
 );
 
-final serviceCategoriesProvider = FutureProvider<List<Category>>(
+final serviceBannersProvider = FutureProvider<List<BannerItem>>(
+  (ref) => ref.watch(catalogRepositoryProvider).serviceBanners(),
+);
+
+final serviceCategoriesProvider =FutureProvider<List<Category>>(
   (ref) => ref.watch(catalogRepositoryProvider).serviceCategories(),
 );
 

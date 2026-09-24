@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_exception.dart';
-import '../../core/theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/dialogs.dart';
@@ -13,10 +12,14 @@ import '../../providers/catalog_providers.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../providers/home_provider.dart';
+import '../../router.dart';
 import '../widgets/form_fields.dart';
+import '../widgets/site_scaffold.dart';
+import '../widgets/wizard_parts.dart';
 
-/// Add or edit a service. Both land the row as `pending`, so it only becomes
-/// public once an admin approves it — same as the website.
+/// Add or edit a service, laid out like the site's form: Identity, Address &
+/// contact, Service description and Photos sections in one card. Both land
+/// the row as `pending`, so it only becomes public once an admin approves it.
 class ServiceFormScreen extends ConsumerStatefulWidget {
   const ServiceFormScreen({super.key, this.existing});
 
@@ -41,6 +44,7 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
   late List<String> _keepPhotos = List.of(widget.existing?.allPhotos ?? const []);
   List<String> _newPhotos = [];
   bool _busy = false;
+  bool _submitted = false;
 
   bool get _isEdit => widget.existing != null;
 
@@ -106,16 +110,18 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
       ref.invalidate(homeFeedProvider);
       if (!mounted) return;
 
-      await AppDialogs.confirm(
-        context,
-        title: _isEdit ? 'Service updated' : 'Service submitted',
-        message: _isEdit
-            ? 'Your changes were saved. An admin reviews edits before they appear publicly.'
-            : 'Thanks! An admin will review your service and publish it shortly. You can track it under "My services".',
-        confirmLabel: 'Done',
-        cancelLabel: 'Close',
-      );
-      if (mounted) context.pop(true);
+      if (_isEdit) {
+        await AppDialogs.confirm(
+          context,
+          title: 'Service updated',
+          message: 'Your changes were saved. An admin reviews edits before they appear publicly.',
+          confirmLabel: 'Done',
+          cancelLabel: 'Close',
+        );
+        if (mounted) context.pop(true);
+      } else {
+        setState(() => _submitted = true);
+      }
     } on ApiException catch (error) {
       if (mounted) AppSnackbar.error(context, error.message);
     } finally {
@@ -127,167 +133,148 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
   Widget build(BuildContext context) {
     final categories = ref.watch(serviceCategoriesProvider).valueOrNull ?? const [];
 
-    return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? 'Edit service' : 'Add a service')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-          children: [
-            const _Notice(
-              text:
-                  'Every service is checked by an admin before it goes live. Give clear, honest details so yours is approved quickly.',
-            ),
-            const SizedBox(height: 18),
-            FormRowField(
-              label: 'Category',
-              required: true,
-              child: AppDropdown(
-                value: _categoryId,
-                options: categories.map((c) => c.id).toList(),
-                hint: 'Choose a category',
-                labelBuilder: (id) {
-                  final match = categories.firstWhere((c) => c.id == id);
-                  return '${match.icon ?? ''} ${match.name}'.trim();
-                },
-                onChanged: (value) => setState(() => _categoryId = value),
-              ),
-            ),
-            FormRowField(
-              label: 'Business or provider name',
-              required: true,
-              child: TextFormField(
-                controller: _providerName,
-                maxLength: 150,
-                textCapitalization: TextCapitalization.words,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. Hill Track Electric Services',
-                  counterText: '',
+    return SiteScaffold(
+      title: _isEdit ? 'Edit service' : 'Add a service',
+      subtitle: _isEdit ? null : 'Submit your service’s details; the people of Khagrachari will find it',
+      body: _submitted
+          ? ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              children: [
+                WizardSuccess(
+                  title: 'Your service has been submitted!',
+                  message:
+                      'It will be published for everyone after admin approval. You can check the status on the "My Services" page.',
+                  primaryLabel: 'View my services',
+                  onPrimary: () => context.pushReplacement(Routes.myServices),
+                  secondaryLabel: 'Go to the service list',
+                  onSecondary: () => context.go(Routes.services),
                 ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Enter a name' : null,
-              ),
-            ),
-            FormRowField(
-              label: 'Description',
-              required: true,
-              hint: 'What you offer, your experience, pricing, working hours.',
-              child: TextFormField(
-                controller: _description,
-                maxLines: 6,
-                maxLength: 2000,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  hintText: 'Describe your service…',
-                ),
-                validator: (value) => (value ?? '').trim().length < 20
-                    ? 'Write at least 20 characters'
-                    : null,
-              ),
-            ),
-            FormRowField(
-              label: 'District',
-              required: true,
-              child: DistrictPicker(
-                value: _district,
-                includeEmpty: false,
-                onChanged: (value) => setState(() {
-                  _district = value;
-                  _area = null;
-                }),
-              ),
-            ),
-            FormRowField(
-              label: 'Area (thana)',
-              required: true,
-              child: UpazilaPicker(
-                districtName: _district,
-                value: _area,
-                includeEmpty: false,
-                onChanged: (value) => setState(() => _area = value),
-              ),
-            ),
-            FormRowField(
-              label: 'Contact number',
-              required: true,
-              child: TextFormField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                maxLength: 30,
-                decoration: const InputDecoration(
-                  hintText: '01XXXXXXXXX',
-                  counterText: '',
-                ),
-                validator: (value) =>
-                    (value ?? '').trim().isEmpty ? 'Enter a contact number' : null,
-              ),
-            ),
-            FormRowField(
-              label: 'Photos',
-              hint: 'Up to 2 photos. The first one is used as the cover.',
-              child: PhotoPickerField(
-                maxPhotos: 2,
-                existingUrls: _keepPhotos,
-                newPaths: _newPhotos,
-                onExistingRemoved: (url) =>
-                    setState(() => _keepPhotos = _keepPhotos.where((u) => u != url).toList()),
-                onNewPathsChanged: (paths) => setState(() => _newPhotos = paths),
-              ),
-            ),
-            const SizedBox(height: 10),
-            FilledButton(
-              onPressed: _busy ? null : _submit,
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 52),
-              ),
-              child: _busy
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: Colors.white,
+              ],
+            )
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                children: [
+                  WizardCard(
+                    gap: 20,
+                    children: [
+                      WizardSection(
+                        title: '🗂️ Identity',
+                        children: [
+                          WizardField(
+                            label: 'Category',
+                            required: true,
+                            child: AppDropdown(
+                              value: _categoryId,
+                              options: categories.map((c) => c.id).toList(),
+                              hint: 'Select',
+                              labelBuilder: (id) {
+                                final match = categories.firstWhere((c) => c.id == id);
+                                return '${match.icon ?? ''} ${match.name}'.trim();
+                              },
+                              onChanged: (value) => setState(() => _categoryId = value),
+                            ),
+                          ),
+                          WizardField(
+                            label: 'Name/Organization name',
+                            required: true,
+                            child: TextFormField(
+                              controller: _providerName,
+                              maxLength: 150,
+                              textCapitalization: TextCapitalization.words,
+                              decoration: const InputDecoration(counterText: ''),
+                              validator: (value) =>
+                                  (value ?? '').trim().isEmpty ? 'Enter a name' : null,
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                  : Text(_isEdit ? 'Save changes' : 'Submit for review'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Notice extends StatelessWidget {
-  const _Notice({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: AppColors.forestLight,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.forestDark),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 12.5,
-                height: 1.5,
-                color: AppColors.forestDark,
+                      WizardSection(
+                        title: '📍 Address & contact',
+                        children: [
+                          WizardField(
+                            label: 'District',
+                            required: true,
+                            child: DistrictPicker(
+                              value: _district,
+                              includeEmpty: false,
+                              onChanged: (value) => setState(() {
+                                _district = value;
+                                // The old thana belongs to the previous district.
+                                _area = null;
+                              }),
+                            ),
+                          ),
+                          WizardField(
+                            label: 'Thana/Area',
+                            required: true,
+                            child: UpazilaPicker(
+                              districtName: _district,
+                              value: _area,
+                              includeEmpty: false,
+                              onChanged: (value) => setState(() => _area = value),
+                            ),
+                          ),
+                          WizardField(
+                            label: 'Phone number',
+                            required: true,
+                            child: TextFormField(
+                              controller: _phone,
+                              keyboardType: TextInputType.phone,
+                              maxLength: 30,
+                              decoration: const InputDecoration(
+                                hintText: '01XXXXXXXXX',
+                                counterText: '',
+                              ),
+                              validator: (value) =>
+                                  (value ?? '').trim().isEmpty ? 'Enter a phone number' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      WizardSection(
+                        title: '📝 Service description',
+                        children: [
+                          TextFormField(
+                            controller: _description,
+                            maxLines: 4,
+                            maxLength: 2000,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: const InputDecoration(
+                              hintText: 'Write in detail about your service...',
+                            ),
+                            validator: (value) =>
+                                (value ?? '').trim().isEmpty ? 'Write a description' : null,
+                          ),
+                        ],
+                      ),
+                      WizardSection(
+                        title: '🖼️ Photos (optional, max 2)',
+                        last: true,
+                        children: [
+                          PhotoPickerField(
+                            maxPhotos: 2,
+                            existingUrls: _keepPhotos,
+                            newPaths: _newPhotos,
+                            onExistingRemoved: (url) => setState(
+                              () => _keepPhotos = _keepPhotos.where((u) => u != url).toList(),
+                            ),
+                            onNewPathsChanged: (paths) => setState(() => _newPhotos = paths),
+                          ),
+                        ],
+                      ),
+                      WizardActions(
+                        nextLabel: _isEdit ? 'Save changes' : 'Submit service',
+                        busyLabel: _isEdit ? 'Saving...' : 'Submitting...',
+                        busy: _busy,
+                        onNext: _submit,
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
-      ),
     );
   }
 }

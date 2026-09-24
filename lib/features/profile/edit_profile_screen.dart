@@ -14,6 +14,7 @@ import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../widgets/form_fields.dart';
+import '../widgets/site_scaffold.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -138,8 +139,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final me = profile.valueOrNull;
     if (me != null) _prefill(me);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Edit profile')),
+    return SiteScaffold(
+      title: 'Edit profile',
       body: profile.isLoading || me == null
           ? const AppLoader()
           : Form(

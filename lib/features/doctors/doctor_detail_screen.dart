@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/theme.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/launchers.dart';
+import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
 import '../../models/doctor.dart';
@@ -13,7 +13,20 @@ import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import '../home/widgets/home_header.dart';
+import '../widgets/detail_parts.dart';
+import '../widgets/site_layout.dart';
 
+const _chamberTypes = {
+  'hospital': 'Hospital',
+  'diagnostic_center': 'Diagnostic Center',
+  'pharmacy': 'Pharmacy',
+  'clinic': 'Clinic',
+};
+
+/// A doctor's page laid out like the site's: "← All doctors", a card with the
+/// photo beside name, qualifications, specialty, love count and the
+/// conditions they treat, then one card per chamber.
 class DoctorDetailScreen extends ConsumerWidget {
   const DoctorDetailScreen({super.key, required this.id});
 
@@ -23,35 +36,44 @@ class DoctorDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final doctor = ref.watch(doctorDetailProvider(id));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Doctor'),
-        actions: [
-          IconButton(
-            onPressed: () => Launchers.shareWebLink(
-              '/doctors/$id',
-              title: doctor.valueOrNull?.name ?? 'Doctor on CHT Plus',
-            ),
-            icon: const Icon(Icons.share_outlined),
-          ),
-        ],
-      ),
-      body: doctor.when(
-        loading: () => const AppLoader(),
-        error: (error, _) => ErrorView(
-          message: '$error',
-          onRetry: () => ref.invalidate(doctorDetailProvider(id)),
+    return doctor.when(
+      loading: () => const Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            HomeHeader(),
+            SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+          ],
         ),
-        data: (item) => _Content(doctor: item),
+      ),
+      error: (error, _) => Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            const HomeHeader(),
+            SliverFillRemaining(
+              child: ErrorView(
+                message: '$error',
+                onRetry: () => ref.invalidate(doctorDetailProvider(id)),
+              ),
+            ),
+          ],
+        ),
+      ),
+      data: (d) => _Content(
+        doctor: d,
+        onRefresh: () async {
+          ref.invalidate(doctorDetailProvider(id));
+          await ref.read(doctorDetailProvider(id).future);
+        },
       ),
     );
   }
 }
 
 class _Content extends ConsumerStatefulWidget {
-  const _Content({required this.doctor});
+  const _Content({required this.doctor, required this.onRefresh});
 
   final DoctorDetail doctor;
+  final Future<void> Function() onRefresh;
 
   @override
   ConsumerState<_Content> createState() => _ContentState();
@@ -74,8 +96,7 @@ class _ContentState extends ConsumerState<_Content> {
       _likeCount += _liked ? 1 : -1;
     });
     try {
-      final result =
-          await ref.read(doctorRepositoryProvider).toggleLike(widget.doctor.id);
+      final result = await ref.read(doctorRepositoryProvider).toggleLike(widget.doctor.id);
       if (mounted) {
         setState(() {
           _liked = result.liked;
@@ -97,127 +118,148 @@ class _ContentState extends ConsumerState<_Content> {
 
   @override
   Widget build(BuildContext context) {
-    final doctor = widget.doctor;
+    final d = widget.doctor;
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 28),
+    return DetailPage(
+      header: const HomeHeader(),
+      onRefresh: widget.onRefresh,
       children: [
-        Container(
-          width: double.infinity,
-          color: AppColors.surface,
-          padding: const EdgeInsets.fromLTRB(16, 22, 16, 20),
-          child: Column(
-            children: [
-              Avatar(url: doctor.photoUrl, name: doctor.name, size: 96),
-              const SizedBox(height: 14),
-              Text(
-                doctor.name,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-              ),
-              if ((doctor.specialty ?? '').isNotEmpty) ...[
-                const SizedBox(height: 5),
-                Text(
-                  doctor.specialty!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.forestDark,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-              if ((doctor.qualifications ?? '').isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  doctor.qualifications!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textSecondary,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SiteButton(
+            label: '← All doctors',
+            outlined: true,
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _Card(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final photoWidth = constraints.maxWidth * 0.4;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: _toggleLike,
-                    icon: Icon(
-                      _liked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
-                      size: 17,
-                      color: _liked ? AppColors.red : AppColors.textSecondary,
-                    ),
-                    label: Text('$_likeCount'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(0, 40),
-                      foregroundColor: AppColors.textSecondary,
-                      side: const BorderSide(color: AppColors.border),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: photoWidth,
+                      height: photoWidth,
+                      child: (d.photoUrl ?? '').isEmpty
+                          ? ColoredBox(
+                              color: AppColors.forestLight,
+                              child: Center(
+                                child: Text(
+                                  d.name.isEmpty ? '?' : d.name.characters.first,
+                                  style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.forestDark,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : AppNetworkImage(url: d.photoUrl, width: photoWidth, height: photoWidth),
                     ),
                   ),
-                  if ((doctor.phone ?? '').isNotEmpty) ...[
-                    const SizedBox(width: 10),
-                    OutlinedButton.icon(
-                      onPressed: () => Launchers.call(context, doctor.phone),
-                      icon: const Icon(Icons.call_rounded, size: 17),
-                      label: const Text('Call'),
-                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          d.name,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                        ),
+                        if ((d.qualifications ?? '').isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(d.qualifications!, style: _sub),
+                        ],
+                        if ((d.specialty ?? '').isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(d.specialty!, style: _sub),
+                        ],
+                        const SizedBox(height: 8),
+                        Material(
+                          color: _liked ? AppColors.red : const Color(0xFFFFF5F4),
+                          shape: StadiumBorder(
+                            side: BorderSide(
+                              color: _liked ? AppColors.red : const Color(0xFFF7D9D6),
+                            ),
+                          ),
+                          child: InkWell(
+                            customBorder: const StadiumBorder(),
+                            onTap: _toggleLike,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                              child: Text(
+                                '${_liked ? '❤️' : '🤍'} $_likeCount',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _liked ? Colors.white : AppColors.red,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (d.services.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Conditions they treat',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 8),
+                          for (final s in d.services)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Text('•  ${s.name}', style: const TextStyle(fontSize: 13.5)),
+                            ),
+                        ],
+                      ],
                     ),
-                  ],
+                  ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
-        if (doctor.services.isNotEmpty) ...[
-          const SectionHeader(title: 'Services offered'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final service in doctor.services)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: AppColors.forestLight,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      service.name,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.forestDark,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-        SectionHeader(
-          title: 'Chambers',
-          subtitle: doctor.chambers.isEmpty
-              ? null
-              : 'Pick a chamber to book a serial',
-        ),
-        if (doctor.chambers.isEmpty)
-          const EmptyState(
-            icon: Icons.local_hospital_outlined,
-            message: 'This doctor has no active chamber right now.',
-            compact: true,
+        const SizedBox(height: 24),
+        const Text('Chambers', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 14),
+        if (d.chambers.isEmpty)
+          const Text(
+            'This doctor has no active chamber right now.',
+            style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
           )
         else
-          for (final chamber in doctor.chambers)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: _ChamberCard(doctorId: doctor.id, chamber: chamber),
-            ),
+          for (final chamber in d.chambers) ...[
+            _ChamberCard(doctorId: d.id, chamber: chamber),
+            const SizedBox(height: 14),
+          ],
       ],
+    );
+  }
+
+  static const _sub = TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4);
+}
+
+/// White rounded card (`.admin-card`).
+class _Card extends StatelessWidget {
+  const _Card({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: child,
     );
   }
 }
@@ -230,124 +272,75 @@ class _ChamberCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final next = chamber.nextAvailable;
+    final c = chamber;
+    final next = c.nextAvailable;
+    final fees = [
+      if (c.consultationFee != null) 'Consultation fee: ${Fmt.taka(c.consultationFee)}',
+      if (c.serialFee != null) 'Serial fee: ${Fmt.taka(c.serialFee)}',
+    ].join(' · ');
+    final place = [c.district, c.area].where((e) => (e ?? '').isNotEmpty).join(', ');
 
-    return AppCard(
-      padding: const EdgeInsets.all(14),
+    return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      chamber.organizationName,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-                    ),
-                    if (chamber.locationLabel.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        chamber.locationLabel,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if ((chamber.organizationPhone ?? '').isNotEmpty)
-                IconButton(
-                  onPressed: () => Launchers.call(context, chamber.organizationPhone),
-                  icon: const Icon(Icons.call_outlined, size: 20),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.forestLight,
-                    foregroundColor: AppColors.forestDark,
-                  ),
-                ),
-            ],
+          if ((c.type ?? '').isNotEmpty)
+            Tag(
+              _chamberTypes[c.type] ?? c.type!,
+              color: AppColors.textSecondary,
+            ),
+          const SizedBox(height: 4),
+          Text(
+            c.organizationName,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: [
-              if (chamber.consultationFee != null)
-                StatusPill(
-                  label: 'Consultation ${Fmt.taka(chamber.consultationFee)}',
-                  color: AppColors.forestDark,
-                ),
-              if (chamber.serialFee != null)
-                StatusPill(
-                  label: 'Serial fee ${Fmt.taka(chamber.serialFee)}',
-                  color: AppColors.textSecondary,
-                ),
-            ],
-          ),
-          if ((chamber.notes ?? '').isNotEmpty) ...[
-            const SizedBox(height: 10),
+          if (place.isNotEmpty) ...[
+            const SizedBox(height: 4),
             Text(
-              chamber.notes!,
-              style: const TextStyle(
-                fontSize: 12.5,
-                color: AppColors.textSecondary,
-                height: 1.45,
-              ),
+              '📍 $place',
+              style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
             ),
           ],
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: next == null ? AppColors.bg : AppColors.forestLight,
-              borderRadius: BorderRadius.circular(10),
+          const SizedBox(height: 8),
+          if (fees.isNotEmpty) ...[
+            Text(fees, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+          ],
+          if ((c.notes ?? '').isNotEmpty) ...[
+            Text(c.notes!, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+          ],
+          if (next != null)
+            Text(
+              '🗓️ Next serial: ${Fmt.date(next.dateTime)}'
+              '${next.timeRange.isEmpty ? '' : ' · ${next.timeRange}'}'
+              ' · ${next.remainingCapacity} available',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.forestDark,
+              ),
+            )
+          else
+            const Tag(
+              'Serial booking is closed',
+              color: Color(0xFF9A6700),
+              background: Color(0xFFFFF3D6),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  next == null ? Icons.event_busy_outlined : Icons.event_available_rounded,
-                  size: 17,
-                  color: next == null ? AppColors.textSecondary : AppColors.forestDark,
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    next == null
-                        ? 'No open dates in the next 30 days'
-                        : 'Next available: ${Fmt.date(next.dateTime)}'
-                            '${next.timeRange.isEmpty ? '' : ' · ${next.timeRange}'}',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: next == null
-                          ? AppColors.textSecondary
-                          : AppColors.forestDark,
-                    ),
-                  ),
-                ),
-              ],
+          const SizedBox(height: 10),
+          FilledButton(
+            onPressed: () => context.push(
+              ref.read(isSignedInProvider) ? '/doctors/$doctorId/book/${c.id}' : Routes.login,
             ),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: next == null
-                ? null
-                : () => context.push(
-                      ref.read(isSignedInProvider)
-                          ? '/doctors/$doctorId/book/${chamber.id}'
-                          : Routes.login,
-                    ),
-            icon: const Icon(Icons.confirmation_number_outlined, size: 18),
-            label: Text(next == null ? 'No dates available' : 'Book a serial'),
             style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 46),
+              backgroundColor: AppColors.forest,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
+            child: const Text('Apply for a serial'),
           ),
         ],
       ),

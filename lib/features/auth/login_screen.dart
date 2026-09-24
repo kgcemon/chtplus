@@ -70,13 +70,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Welcome back',
-      subtitle: 'Sign in to post services, message sellers and book appointments.',
+      title: 'Log in',
+      subtitle: '',
+      tab: AuthTab.login,
       children: [
+        GoogleSignInButton(onCredential: _google),
         Form(
           key: _formKey,
           child: Column(
             children: [
+              const Align(alignment: Alignment.centerLeft, child: FieldLabel('Email')),
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
@@ -96,6 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 },
               ),
               const SizedBox(height: 12),
+              const Align(alignment: Alignment.centerLeft, child: FieldLabel('Password')),
               TextFormField(
                 controller: _password,
                 obscureText: _obscure,
@@ -140,9 +144,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
                 )
-              : const Text('Sign in'),
+              : const Text('Log in'),
         ),
-        GoogleSignInButton(onCredential: _google),
         const SizedBox(height: 22),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

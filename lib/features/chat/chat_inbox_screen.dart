@@ -12,6 +12,7 @@ import '../../core/widgets/dialogs.dart';
 import '../../models/engagement.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
+import '../widgets/site_scaffold.dart';
 
 class ChatInboxScreen extends ConsumerStatefulWidget {
   const ChatInboxScreen({super.key});
@@ -75,11 +76,9 @@ class _ChatInboxScreenState extends ConsumerState<ChatInboxScreen> {
     final inbox = ref.watch(chatInboxProvider);
     final settings = ref.watch(chatSettingsProvider).valueOrNull;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Messages'),
-        actions: [
-          PopupMenuButton<String>(
+    return SiteScaffold(
+      title: 'Chat',
+      action: PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (value) {
               if (value == 'toggle' && settings != null) {
@@ -108,8 +107,6 @@ class _ChatInboxScreenState extends ConsumerState<ChatInboxScreen> {
               ),
             ],
           ),
-        ],
-      ),
       body: Column(
         children: [
           if (settings?.chatEnabled == false)

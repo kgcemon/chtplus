@@ -1,4 +1,4 @@
-package xyz.chtplus.app
+package com.chtplus.bd
 
 import io.flutter.embedding.android.FlutterActivity
 

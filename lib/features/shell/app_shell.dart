@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
+import '../home/widgets/home_drawer.dart';
 
 /// Bottom navigation mirroring the website's mobile nav:
-/// Home · Services · Blood · Market · Matrimony.
+/// Home · Services · Blood · Market · Biodata.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
+  /// The outer scaffold, so the home header can open [HomeDrawer] over the
+  /// whole screen (bottom nav included), as the site's menu covers the page.
+  static final scaffoldKey = GlobalKey<ScaffoldState>();
+
   static const _items = <_NavItem>[
-    _NavItem(Icons.home_rounded, Icons.home_outlined, 'Home'),
-    _NavItem(Icons.handyman_rounded, Icons.handyman_outlined, 'Services'),
-    _NavItem(Icons.bloodtype_rounded, Icons.bloodtype_outlined, 'Blood'),
-    _NavItem(Icons.storefront_rounded, Icons.storefront_outlined, 'Market'),
-    _NavItem(Icons.favorite_rounded, Icons.favorite_outline_rounded, 'Matrimony'),
+    _NavItem('🏠', 'Home'),
+    _NavItem('🧰', 'Services'),
+    _NavItem('🩸', 'Blood'),
+    _NavItem('🛒', 'Market'),
+    _NavItem('💍', 'Biodata'),
   ];
 
   void _onTap(int index) {
@@ -27,6 +32,11 @@ class AppShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: scaffoldKey,
+      drawer: const HomeDrawer(),
+      // Opened only by the home header's menu button, not by an edge swipe
+      // on other tabs.
+      drawerEnableOpenDragGesture: false,
       body: shell,
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
@@ -57,10 +67,9 @@ class AppShell extends StatelessWidget {
 }
 
 class _NavItem {
-  const _NavItem(this.activeIcon, this.icon, this.label);
+  const _NavItem(this.emoji, this.label);
 
-  final IconData activeIcon;
-  final IconData icon;
+  final String emoji;
   final String label;
 }
 
@@ -73,27 +82,35 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.forest : AppColors.textSecondary;
-    return InkResponse(
-      onTap: onTap,
-      radius: 40,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(active ? item.activeIcon : item.icon, size: 23, color: color),
-          const SizedBox(height: 3),
-          Text(
-            item.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 10.5,
-              height: 1.1,
-              color: color,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-            ),
+    // The site's `.bottom-nav-item`: emoji over label, the active tab on a
+    // soft green pill.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+      child: Material(
+        color: active ? AppColors.forestLight : Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(item.emoji, style: const TextStyle(fontSize: 19, height: 1)),
+              const SizedBox(height: 3),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  height: 1.1,
+                  fontWeight: FontWeight.w600,
+                  color: active ? AppColors.forestDark : AppColors.textSecondary,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

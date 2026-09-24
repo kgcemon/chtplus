@@ -66,7 +66,8 @@ class _BannerSliderState extends State<BannerSlider> {
           ClipRRect(
             borderRadius: BorderRadius.circular(AppRadius.card),
             child: AspectRatio(
-              aspectRatio: 16 / 8,
+              // Same 3:1 frame as the site, so the whole banner shows uncropped.
+              aspectRatio: 3 / 1,
               child: PageView.builder(
                 controller: _controller,
                 itemCount: widget.banners.length,

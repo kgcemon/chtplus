@@ -15,6 +15,7 @@ import '../../providers/feature_providers.dart';
 import '../../providers/home_provider.dart';
 import '../widgets/sponsor_sheet.dart';
 import 'service_form_screen.dart';
+import '../widgets/site_scaffold.dart';
 
 class MyServicesScreen extends ConsumerWidget {
   const MyServicesScreen({super.key});
@@ -23,8 +24,9 @@ class MyServicesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final services = ref.watch(myServicesProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My services')),
+    return SiteScaffold(
+      title: 'My Services',
+      subtitle: 'The services you added, and the option to sponsor them by buying a subscription package',
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await context.push('/services/add');

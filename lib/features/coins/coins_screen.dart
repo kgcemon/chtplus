@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/theme.dart';
@@ -12,254 +13,358 @@ import '../../models/billing.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
+import '../../router.dart';
 import '../widgets/form_fields.dart';
+import '../widgets/site_layout.dart';
+import '../widgets/site_scaffold.dart';
+import '../widgets/wizard_parts.dart';
 
-/// Coins pay for biodata unlocks and boosts.
-///
-/// Money moves outside the app: the user sends the amount over bKash or Nagad
-/// and submits the transaction id here, and an admin credits the coins after
-/// checking it. Nothing is charged inside the app.
-class CoinsScreen extends ConsumerWidget {
+final _paymentNumbersProvider = FutureProvider.autoDispose<Map<String, String>>(
+  (ref) => ref.watch(billingRepositoryProvider).coinPaymentNumbers(),
+);
+
+/// Buying coins, laid out like the site's coin page: the balance banner, a
+/// form (package, payment method, the number to Send Money to, transaction id,
+/// phone), then the recent requests. Money moves outside the app; an admin
+/// credits the coins after checking the transaction.
+class CoinsScreen extends ConsumerStatefulWidget {
   const CoinsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final balance = ref.watch(coinBalanceProvider);
-    final packages = ref.watch(coinPackagesProvider);
-    final requests = ref.watch(coinRequestsProvider);
+  ConsumerState<CoinsScreen> createState() => _CoinsScreenState();
+}
+
+class _CoinsScreenState extends ConsumerState<CoinsScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _transactionId = TextEditingController();
+  late final _phone = TextEditingController(text: ref.read(currentUserProvider)?.phone ?? '');
+  String? _packageId;
+  String? _method;
+  bool _busy = false;
+  bool _success = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _transactionId.dispose();
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit(String packageId, String method) async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(billingRepositoryProvider).requestCoins(
+            packageId: packageId,
+            method: method,
+            transactionId: _transactionId.text.trim(),
+            phone: _phone.text.trim(),
+          );
+      ref.invalidate(coinRequestsProvider);
+      _transactionId.clear();
+      if (mounted) setState(() => _success = true);
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = switch (error.code) {
+          'pending_request_exists' => 'You already have a request under review',
+          'method_unavailable' =>
+            'This payment method is not available right now, please choose another',
+          _ => 'Could not send the request, please try again',
+        };
+      });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final signedIn = ref.watch(isSignedInProvider);
+    final balance = ref.watch(coinBalanceProvider).valueOrNull ?? 0;
+    final packages = ref.watch(coinPackagesProvider).valueOrNull ?? const <CoinPackage>[];
+    final requests = ref.watch(coinRequestsProvider).valueOrNull ?? const <CoinPurchaseRequest>[];
+    final numbers = ref.watch(_paymentNumbersProvider).valueOrNull ?? const <String, String>{};
     final subscription = ref.watch(subscriptionProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Coins')),
+    // Only methods the admin has given a number for; all of them until the
+    // numbers load.
+    final methods = numbers.isEmpty
+        ? paymentMethods
+        : paymentMethods.where((m) => (numbers[m] ?? '').isNotEmpty).toList();
+    final packageId = packages.any((p) => p.id == _packageId)
+        ? _packageId
+        : (packages.isEmpty ? null : packages.first.id);
+    final method = methods.contains(_method) ? _method : (methods.isEmpty ? null : methods.first);
+    final package = packages.where((p) => p.id == packageId).firstOrNull;
+    final number = method == null ? '' : (numbers[method] ?? '');
+    final hasPending = requests.any((r) => r.status == 'pending');
+
+    return SiteScaffold(
+      title: 'Buy Coins',
+      subtitle: 'Use coins to unlock biodata and to sponsor services/products',
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(coinBalanceProvider);
           ref.invalidate(coinRequestsProvider);
           ref.invalidate(subscriptionProvider);
+          ref.invalidate(_paymentNumbersProvider);
           await ref.read(coinBalanceProvider.future);
         },
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
           children: [
-            _BalanceCard(balance: balance.valueOrNull ?? 0),
-            const SizedBox(height: 22),
-            const Text(
-              'Buy coins',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Send the amount over bKash or Nagad, then submit the transaction id. '
-              'An admin adds the coins to your balance after checking it.',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: AppColors.textSecondary,
-                height: 1.5,
+            if (!signedIn) ...[
+              const SizedBox(height: 24),
+              const Text(
+                'Please log in first to buy coins.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
-            ),
-            const SizedBox(height: 14),
-            packages.when(
-              loading: () => const AppLoader(),
-              error: (error, _) => ErrorView(message: '$error', compact: true),
-              data: (items) {
-                if (items.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.monetization_on_outlined,
-                    message: 'No coin packages are available right now.',
-                    compact: true,
-                  );
-                }
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: items.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    mainAxisExtent: 124,
-                  ),
-                  itemBuilder: (context, index) => _PackageCard(
-                    package: items[index],
-                    onTap: () => _buy(context, ref, items[index]),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            _SubscriptionSection(subscription: subscription.valueOrNull),
-            const SizedBox(height: 24),
-            const Text(
-              'Your requests',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            requests.when(
-              loading: () => const AppLoader(),
-              error: (error, _) => ErrorView(message: '$error', compact: true),
-              data: (items) {
-                if (items.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'You have not requested any coins yet.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                  );
-                }
-                return Column(
+              const SizedBox(height: 12),
+              Center(
+                child: SiteButton(
+                  label: 'Log in / Sign up',
+                  onPressed: () => context.push(Routes.login),
+                ),
+              ),
+            ] else ...[
+              // Balance banner.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF9EC),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                  border: Border.all(color: const Color(0xFFF3E0B0)),
+                ),
+                child: Row(
                   children: [
-                    for (final request in items)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _RequestTile(request: request),
+                    const Expanded(
+                      child: Text(
+                        'Your current balance',
+                        style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
                       ),
+                    ),
+                    Text(
+                      '🪙 $balance coins',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF9A6700),
+                      ),
+                    ),
                   ],
-                );
-              },
-            ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              if (_success)
+                WizardCard(
+                  children: [
+                    const Text('✅', textAlign: TextAlign.center, style: TextStyle(fontSize: 44)),
+                    const Text(
+                      'Your request has been submitted',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+                    ),
+                    const Text(
+                      'Once the admin verifies and approves it, the coins will be added to your account.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13.5, height: 1.55, color: AppColors.textSecondary),
+                    ),
+                    Center(
+                      child: SiteButton(
+                        label: 'Make another request',
+                        outlined: true,
+                        onPressed: () => setState(() => _success = false),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Form(
+                  key: _formKey,
+                  child: WizardCard(
+                    children: [
+                      if (hasPending)
+                        const Text(
+                          'You already have a request under review.',
+                          style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                        ),
+                      WizardField(
+                        label: 'Select a package',
+                        child: packages.isEmpty
+                            ? const Text(
+                                'No coin packages are available right now.',
+                                style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                              )
+                            : AppDropdown(
+                                value: packageId,
+                                options: packages.map((p) => p.id).toList(),
+                                labelBuilder: (id) {
+                                  final p = packages.firstWhere((p) => p.id == id);
+                                  return '${Fmt.taka(p.takaAmount)} = ${p.coinAmount} coins';
+                                },
+                                onChanged: (value) => setState(() => _packageId = value),
+                              ),
+                      ),
+                      WizardField(
+                        label: 'Payment method',
+                        child: AppDropdown(
+                          value: method,
+                          options: methods,
+                          labelBuilder: paymentMethodLabel,
+                          onChanged: (value) => setState(() => _method = value),
+                        ),
+                      ),
+                      if (number.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.forestLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                const TextSpan(text: 'Send Money '),
+                                TextSpan(
+                                  text: package == null ? '' : Fmt.taka(package.takaAmount),
+                                  style: const TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                                TextSpan(text: ' to this ${paymentMethodLabel(method)} number: '),
+                                TextSpan(
+                                  text: number,
+                                  style: const TextStyle(fontWeight: FontWeight.w800),
+                                ),
+                                const TextSpan(
+                                  text: ', then enter the transaction ID in the form below.',
+                                ),
+                              ],
+                            ),
+                            style: const TextStyle(
+                              fontSize: 13.5,
+                              height: 1.55,
+                              color: AppColors.forestDark,
+                            ),
+                          ),
+                        ),
+                      WizardField(
+                        label: 'Transaction ID',
+                        child: TextFormField(
+                          controller: _transactionId,
+                          textCapitalization: TextCapitalization.characters,
+                          inputFormatters: [LengthLimitingTextInputFormatter(100)],
+                          validator: (v) =>
+                              (v ?? '').trim().isEmpty ? 'Enter the transaction ID' : null,
+                        ),
+                      ),
+                      WizardField(
+                        label: 'Your phone number',
+                        child: TextFormField(
+                          controller: _phone,
+                          keyboardType: TextInputType.phone,
+                          inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                          validator: (v) =>
+                              (v ?? '').trim().isEmpty ? 'Enter your phone number' : null,
+                        ),
+                      ),
+                      if (_error != null)
+                        Text(_error!, style: const TextStyle(fontSize: 13, color: AppColors.red)),
+                      WizardActions(
+                        nextLabel: 'Send request',
+                        busyLabel: 'Sending...',
+                        busy: _busy,
+                        onNext: hasPending || packageId == null || method == null
+                            ? null
+                            : () => _submit(packageId, method),
+                      ),
+                    ],
+                  ),
+                ),
+              if (requests.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                const Text(
+                  'Your recent requests',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                _RequestsTable(requests: requests),
+              ],
+              const SizedBox(height: 24),
+              _SubscriptionSection(subscription: subscription.valueOrNull),
+            ],
           ],
         ),
       ),
     );
   }
-
-  Future<void> _buy(BuildContext context, WidgetRef ref, CoinPackage package) async {
-    final submitted = await AppDialogs.sheet<bool>(
-      context,
-      child: _PaymentSheet(
-        title: 'Buy ${package.coinAmount} coins',
-        amountLabel: Fmt.taka(package.takaAmount),
-        onSubmit: ({
-          required String method,
-          required String transactionId,
-          required String phone,
-        }) =>
-            ref.read(billingRepositoryProvider).requestCoins(
-                  packageId: package.id,
-                  method: method,
-                  transactionId: transactionId,
-                  phone: phone,
-                ),
-      ),
-    );
-    if (submitted == true) {
-      ref.invalidate(coinRequestsProvider);
-      if (context.mounted) {
-        AppSnackbar.success(context, 'Request sent. An admin will review it shortly.');
-      }
-    }
-  }
 }
 
-class _BalanceCard extends ConsumerWidget {
-  const _BalanceCard({required this.balance});
+/// Package / Method / Status table (`.admin-table`).
+class _RequestsTable extends StatelessWidget {
+  const _RequestsTable({required this.requests});
 
-  final int balance;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.forestDark, AppColors.forest],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Your balance',
-                  style: TextStyle(color: Colors.white70, fontSize: 12.5),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '$balance',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        'coins',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                    ),
-                  ],
-                ),
-                if (user != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    user.name,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12.5),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const Text('🪙', style: TextStyle(fontSize: 44)),
-        ],
-      ),
-    );
-  }
-}
-
-class _PackageCard extends StatelessWidget {
-  const _PackageCard({required this.package, required this.onTap});
-
-  final CoinPackage package;
-  final VoidCallback onTap;
+  final List<CoinPurchaseRequest> requests;
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
+    const head = TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary);
+    const cell = TextStyle(fontSize: 13);
+
+    Widget row(List<Widget> cells, {bool header = false}) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: header ? AppColors.bg : null,
+            border: header ? null : const Border(top: BorderSide(color: AppColors.border)),
+          ),
+          child: Row(
             children: [
-              const Text('🪙', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 7),
-              Text(
-                '${package.coinAmount}',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
-              ),
+              Expanded(flex: 5, child: cells[0]),
+              Expanded(flex: 3, child: cells[1]),
+              Expanded(flex: 3, child: Align(alignment: Alignment.centerLeft, child: cells[2])),
             ],
           ),
-          const SizedBox(height: 4),
-          const Text(
-            'coins',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
-          const Spacer(),
-          Text(
-            Fmt.taka(package.takaAmount),
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: AppColors.forestDark,
-            ),
-          ),
+        );
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          row(const [Text('Package', style: head), Text('Method', style: head), Text('Status', style: head)],
+              header: true),
+          for (final r in requests)
+            row([
+              Text('${Fmt.taka(r.takaAmount)} → ${r.coinAmount} coins', style: cell),
+              Text(paymentMethodLabel(r.method), style: cell),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 2),
+                decoration: BoxDecoration(
+                  color: r.status == 'approved' ? AppColors.forestLight : const Color(0xFFFFF3D6),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  switch (r.status) {
+                    'pending' => 'Pending',
+                    'approved' => 'Approved',
+                    _ => 'Rejected',
+                  },
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: r.status == 'approved' ? AppColors.forestDark : const Color(0xFF9A6700),
+                  ),
+                ),
+              ),
+            ]),
         ],
       ),
     );
@@ -390,65 +495,6 @@ class _SubscriptionSection extends ConsumerWidget {
   }
 }
 
-class _RequestTile extends StatelessWidget {
-  const _RequestTile({required this.request});
-
-  final CoinPurchaseRequest request;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(13),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '🪙 ${request.coinAmount}',
-                      style: const TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      Fmt.taka(request.takaAmount),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '${paymentMethodLabel(request.method)} · ${request.transactionId ?? ''}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  Fmt.relative(request.requestedAt),
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          StatusPill.forStatus(request.status),
-        ],
-      ),
-    );
-  }
-}
 
 /// Collects the payment method, transaction id and the number the money was
 /// sent from.

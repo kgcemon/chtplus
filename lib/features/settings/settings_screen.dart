@@ -15,6 +15,7 @@ import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../auth/google_signin_service.dart';
+import '../widgets/site_scaffold.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -110,8 +111,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final chatSettings = ref.watch(chatSettingsProvider).valueOrNull;
     final signedIn = ref.watch(isSignedInProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings & privacy')),
+    return SiteScaffold(
+      title: 'Settings & privacy',
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [

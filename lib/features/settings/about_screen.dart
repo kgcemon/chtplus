@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../core/utils/launchers.dart';
 import '../../core/widgets/common.dart';
 import '../../router.dart';
+import '../widgets/site_scaffold.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -45,8 +46,8 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('About CHT Plus')),
+    return SiteScaffold(
+      title: 'About CHT Plus',
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
         children: [

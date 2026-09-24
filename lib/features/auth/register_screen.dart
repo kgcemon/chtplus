@@ -79,9 +79,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'Create your account',
-      subtitle: 'One account for services, marketplace, matrimony and appointments.',
+      title: 'New account',
+      subtitle: '',
+      tab: AuthTab.register,
       children: [
+        GoogleSignInButton(onCredential: _google),
         Form(
           key: _formKey,
           child: Column(
@@ -218,7 +220,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 )
               : const Text('Create account'),
         ),
-        GoogleSignInButton(onCredential: _google),
         const SizedBox(height: 22),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

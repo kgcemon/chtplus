@@ -23,6 +23,14 @@ class Listing {
     this.status,
     this.sponsoredUntil,
     this.userId,
+    this.createdAt,
+    this.ownerName,
+    this.ownerPhotoUrl,
+    this.ownerBlueBadge = false,
+    this.parentCategoryId,
+    this.parentCategoryName,
+    this.parentCategoryIcon,
+    this.related = const [],
   });
 
   final String id;
@@ -45,6 +53,20 @@ class Listing {
   final String? status;
   final DateTime? sponsoredUntil;
   final String? userId;
+  final DateTime? createdAt;
+
+  /// The CHT Plus account that posted it (detail only).
+  final String? ownerName;
+  final String? ownerPhotoUrl;
+  final bool ownerBlueBadge;
+
+  /// The top-level category above [categoryId], for the breadcrumb trail.
+  final String? parentCategoryId;
+  final String? parentCategoryName;
+  final String? parentCategoryIcon;
+
+  /// Up to four other products in the same category (detail only).
+  final List<Listing> related;
 
   factory Listing.fromJson(Map<String, dynamic> json) => Listing(
         id: json.str('id'),
@@ -67,6 +89,14 @@ class Listing {
         status: json.strOrNull('status'),
         sponsoredUntil: json.date('sponsoredUntil'),
         userId: json.strOrNull('userId'),
+        createdAt: json.date('createdAt'),
+        ownerName: json.strOrNull('ownerName'),
+        ownerPhotoUrl: json.strOrNull('ownerPhotoUrl'),
+        ownerBlueBadge: json.flag('ownerBlueBadge'),
+        parentCategoryId: json.mapOrNull('parentCategory')?.strOrNull('id'),
+        parentCategoryName: json.mapOrNull('parentCategory')?.strOrNull('name'),
+        parentCategoryIcon: json.mapOrNull('parentCategory')?.strOrNull('icon'),
+        related: json.mapList('related').map(Listing.fromJson).toList(),
       );
 
   String get locationLabel =>

@@ -13,6 +13,7 @@ import '../../models/doctor.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import '../widgets/site_scaffold.dart';
 
 class MyAppointmentsScreen extends ConsumerWidget {
   const MyAppointmentsScreen({super.key});
@@ -21,8 +22,9 @@ class MyAppointmentsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final appointments = ref.watch(myAppointmentsProvider);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('My appointments')),
+    return SiteScaffold(
+      title: 'My Serials',
+      subtitle: 'View your serial requests and their status',
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(myAppointmentsProvider);

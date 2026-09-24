@@ -24,6 +24,14 @@ class BillingRepository {
     return parseList(body, CoinPackage.fromJson);
   }
 
+  /// The bKash / Nagad numbers to Send Money to, keyed by method. An empty
+  /// number means that method is not offered right now.
+  Future<Map<String, String>> coinPaymentNumbers() async {
+    final body = await _api.get('/api/coin-payment-numbers');
+    if (body is! Map<String, dynamic>) return const {};
+    return {for (final m in paymentMethods) m: body.str(m)};
+  }
+
   Future<List<CoinPurchaseRequest>> coinRequests() async {
     final body = await _api.get('/api/coin-purchase-requests');
     return parseList(body, CoinPurchaseRequest.fromJson);

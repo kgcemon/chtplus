@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/theme.dart';
-import '../../core/utils/formatters.dart';
 import '../../core/utils/launchers.dart';
+import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
 import '../../models/donor.dart';
@@ -13,9 +13,16 @@ import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import '../widgets/detail_parts.dart';
 import '../widgets/reviews_section.dart';
-import '../widgets/save_button.dart';
 
+final _donorLikersProvider = FutureProvider.autoDispose.family<List<String>, String>(
+  (ref, id) => ref.watch(donorRepositoryProvider).likerNames(id),
+);
+
+/// A donor's details, drawn like the site's donor popup: name with Follow and
+/// "group · area" in the header, a big photo beside Call / Profile / Message,
+/// the love reactions, then reviews.
 class DonorDetailScreen extends ConsumerWidget {
   const DonorDetailScreen({super.key, required this.id});
 
@@ -25,32 +32,24 @@ class DonorDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final donor = ref.watch(donorDetailProvider(id));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Donor profile'),
-        actions: [
+    return donor.when(
+      loading: () => const SheetPage(
+        children: [
           Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: SaveButton(
-              targetType: 'donor',
-              targetId: id,
-              light: false,
-              size: 22,
-            ),
+            padding: EdgeInsets.all(40),
+            child: Center(child: CircularProgressIndicator()),
           ),
         ],
       ),
-      body: donor.when(
-        loading: () => const AppLoader(),
-        error: (error, _) => ErrorView(
-          message: '$error',
-          onRetry: () => ref.invalidate(donorDetailProvider(id)),
-        ),
-        data: (item) => _Content(donor: item),
+      error: (error, _) => SheetPage(
+        children: [
+          ErrorView(
+            message: '$error',
+            onRetry: () => ref.invalidate(donorDetailProvider(id)),
+          ),
+        ],
       ),
-      bottomNavigationBar: donor.valueOrNull == null
-          ? null
-          : _ContactBar(donor: donor.value!),
+      data: (d) => _Content(donor: d),
     );
   }
 }
@@ -68,6 +67,7 @@ class _ContentState extends ConsumerState<_Content> {
   late bool _liked = widget.donor.likedByMe;
   late int _likeCount = widget.donor.likeCount;
   bool _busy = false;
+  bool _showLikers = false;
 
   Future<void> _toggleLike() async {
     if (!ref.read(isSignedInProvider)) {
@@ -81,8 +81,8 @@ class _ContentState extends ConsumerState<_Content> {
       _likeCount += _liked ? 1 : -1;
     });
     try {
-      final result =
-          await ref.read(donorRepositoryProvider).toggleLike(widget.donor.id);
+      final result = await ref.read(donorRepositoryProvider).toggleLike(widget.donor.id);
+      ref.invalidate(_donorLikersProvider(widget.donor.id));
       if (mounted) {
         setState(() {
           _liked = result.liked;
@@ -102,208 +102,208 @@ class _ContentState extends ConsumerState<_Content> {
     }
   }
 
+  Future<void> _message() async {
+    if (!ref.read(isSignedInProvider)) {
+      context.push(Routes.login);
+      return;
+    }
+    try {
+      final conversationId =
+          await ref.read(chatRepositoryProvider).startConversation(widget.donor.userId!);
+      if (mounted) {
+        context.push('/chat/$conversationId?name=${Uri.encodeComponent(widget.donor.name)}');
+      }
+    } on ApiException catch (error) {
+      if (mounted) AppSnackbar.error(context, error.message);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final donor = widget.donor;
-    final waitDays = donor.daysUntilEligible;
+    final d = widget.donor;
+    final area = (d.area ?? '').isNotEmpty ? d.area! : d.locationLabel;
+    final likers = _showLikers ? ref.watch(_donorLikersProvider(d.id)) : null;
 
-    return ListView(
-      padding: const EdgeInsets.only(bottom: 24),
+    return SheetPage(
+      title: Row(
+        children: [
+          Flexible(child: Text(d.name)),
+          FollowInline(userId: d.userId),
+        ],
+      ),
+      subtitle: [d.bloodGroup ?? '', area].where((e) => e.isNotEmpty).join(' · '),
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(16, 22, 16, 22),
-          color: AppColors.surface,
-          child: Column(
-            children: [
-              Stack(
-                children: [
-                  Avatar(url: donor.photoUrl, name: donor.name, size: 96),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.red,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: Text(
-                        donor.bloodGroup ?? '?',
+        Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  color: AppColors.forestLight,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                alignment: Alignment.center,
+                child: (d.photoUrl ?? '').isEmpty
+                    ? Text(
+                        d.name.isEmpty ? '?' : d.name.characters.first,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
+                          fontSize: 48,
                           fontWeight: FontWeight.w800,
+                          color: AppColors.forest,
+                        ),
+                      )
+                    : AppNetworkImage(url: d.photoUrl, width: 110, height: 110),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (d.eligible)
+                    FilledButton(
+                      onPressed: () => Launchers.call(context, d.phone),
+                      style: smallButtonStyle(block: true),
+                      child: const Text('📞 Call'),
+                    )
+                  else
+                    Container(
+                      height: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F2F1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: const Text(
+                        'Donated recently',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                donor.name,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-              ),
-              if (donor.locationLabel.isNotEmpty) ...[
-                const SizedBox(height: 5),
-                Text(
-                  donor.locationLabel,
-                  style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
-                ),
-              ],
-              const SizedBox(height: 12),
-              StatusPill(
-                label: donor.eligible
-                    ? 'Available to donate'
-                    : waitDays == null
-                        ? 'Not available yet'
-                        : 'Available in $waitDays days',
-                color: donor.eligible ? AppColors.forest : AppColors.amber,
-                icon: donor.eligible
-                    ? Icons.check_circle_outline
-                    : Icons.schedule_rounded,
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  RatingStars(rating: donor.rating, count: donor.ratingCount),
-                  const SizedBox(width: 16),
-                  InkWell(
-                    onTap: _toggleLike,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _liked
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_outline_rounded,
-                            size: 17,
-                            color: _liked ? AppColors.red : AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            '$_likeCount',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
+                  if (d.userId != null) ...[
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () => context.push('/u/${d.userId}'),
+                      style: smallButtonStyle(outlined: true, block: true),
+                      child: const Text('👤 Profile'),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          color: AppColors.surface,
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Details',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 6),
-              LabeledRow(
-                label: 'Blood group',
-                value: donor.bloodGroup ?? '—',
-                icon: Icons.bloodtype_outlined,
-              ),
-              LabeledRow(
-                label: 'Last donation',
-                value: donor.lastDonationDate == null
-                    ? 'Not recorded'
-                    : Fmt.date(donor.lastDonationDate),
-                icon: Icons.event_outlined,
-              ),
-              LabeledRow(
-                label: 'Area',
-                value: donor.locationLabel.isEmpty ? '—' : donor.locationLabel,
-                icon: Icons.place_outlined,
-              ),
-            ],
-          ),
-        ),
-        if (donor.userId != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: AppCard(
-              onTap: () => context.push('/u/${donor.userId}'),
-              child: const Row(
-                children: [
-                  Icon(Icons.account_circle_outlined, color: AppColors.forest),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'View this donor\'s CHT Plus profile',
-                      style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: _message,
+                      style: smallButtonStyle(outlined: true, block: true),
+                      child: const Text('💬 Message'),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, color: AppColors.textSecondary),
+                  ],
                 ],
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LovePill(
+                label: '${_liked ? '❤️' : '🤍'} $_likeCount',
+                onTap: _toggleLike,
+                filled: _liked,
+              ),
+              const SizedBox(width: 8),
+              _LovePill(
+                label: 'liked this ${_showLikers ? '▲' : '▼'}',
+                onTap: () => setState(() => _showLikers = !_showLikers),
+              ),
+            ],
           ),
-        ReviewsSection(targetType: 'donor', targetId: donor.id),
+        ),
+        if (likers != null) ...[
+          const SizedBox(height: 10),
+          likers.when(
+            loading: () => const _Note('Loading...'),
+            error: (_, __) => const _Note('Could not load'),
+            data: (names) => names.isEmpty
+                ? const _Note('No one has liked this yet')
+                : Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final name in names)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFDECEB),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            '❤️ $name',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.red,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        ReviewsSection(targetType: 'donor', targetId: d.id),
       ],
     );
   }
 }
 
-class _ContactBar extends StatelessWidget {
-  const _ContactBar({required this.donor});
+/// Rounded red pill (`.likers-toggle`); [filled] once the viewer has loved.
+class _LovePill extends StatelessWidget {
+  const _LovePill({required this.label, required this.onTap, this.filled = false});
 
-  final Donor donor;
+  final String label;
+  final VoidCallback onTap;
+  final bool filled;
 
   @override
   Widget build(BuildContext context) {
-    if ((donor.phone ?? '').isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.border)),
+    return Material(
+      color: filled ? AppColors.red : const Color(0xFFFFF5F4),
+      shape: StadiumBorder(
+        side: BorderSide(color: filled ? AppColors.red : const Color(0xFFF7D9D6)),
       ),
-      child: SafeArea(
-        top: false,
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => Launchers.call(context, donor.phone),
-                  icon: const Icon(Icons.call_rounded, size: 19),
-                  label: const Text('Call donor'),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.red),
-                ),
-              ),
-              const SizedBox(width: 10),
-              OutlinedButton(
-                onPressed: () => Launchers.sms(context, donor.phone),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(52, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                ),
-                child: const Icon(Icons.sms_outlined, size: 20),
-              ),
-            ],
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: filled ? Colors.white : AppColors.red,
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+class _Note extends StatelessWidget {
+  const _Note(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary));
   }
 }

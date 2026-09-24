@@ -26,6 +26,16 @@ class CatalogRepository {
     return parseList(body, BannerItem.fromJson);
   }
 
+  /// The banners above the service categories page.
+  Future<List<BannerItem>> serviceBanners() async {
+    final body = await _api.get(
+      '/api/banners',
+      query: {'placement': 'services'},
+      cacheTtl: CacheTtl.promo,
+    );
+    return parseList(body, BannerItem.fromJson);
+  }
+
   Future<WelcomePopup?> welcomePopup() async {
     final body = await _api.get('/api/welcome-popup', cacheTtl: CacheTtl.promo);
     return WelcomePopup.fromResponse(body);

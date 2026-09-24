@@ -110,6 +110,7 @@ class BiodataFilters {
     this.gender,
     this.maritalStatus,
     this.district,
+    this.area,
     this.minAge,
     this.maxAge,
     this.search,
@@ -118,6 +119,7 @@ class BiodataFilters {
   final String? gender;
   final String? maritalStatus;
   final String? district;
+  final String? area;
   final int? minAge;
   final int? maxAge;
   final String? search;
@@ -126,6 +128,7 @@ class BiodataFilters {
       gender != null ||
       maritalStatus != null ||
       district != null ||
+      area != null ||
       minAge != null ||
       maxAge != null ||
       (search != null && search!.isNotEmpty);
@@ -138,6 +141,7 @@ class BiodataFilters {
         item.permanentDistrict != district) {
       return false;
     }
+    if (area != null && item.area != area) return false;
     final age = item.age;
     if (minAge != null && (age == null || age < minAge!)) return false;
     if (maxAge != null && (age == null || age > maxAge!)) return false;
@@ -161,6 +165,7 @@ class BiodataFilters {
     Object? gender = _unset,
     Object? maritalStatus = _unset,
     Object? district = _unset,
+    Object? area = _unset,
     Object? minAge = _unset,
     Object? maxAge = _unset,
     Object? search = _unset,
@@ -170,6 +175,7 @@ class BiodataFilters {
         maritalStatus:
             maritalStatus == _unset ? this.maritalStatus : maritalStatus as String?,
         district: district == _unset ? this.district : district as String?,
+        area: area == _unset ? this.area : area as String?,
         minAge: minAge == _unset ? this.minAge : minAge as int?,
         maxAge: maxAge == _unset ? this.maxAge : maxAge as int?,
         search: search == _unset ? this.search : search as String?,

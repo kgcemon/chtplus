@@ -94,7 +94,7 @@ Google Cloud Console, or `authenticate()` will fail:
 keytool -list -v -keystore %USERPROFILE%\.android\debug.keystore -alias androiddebugkey -storepass android -keypass android
 ```
 
-Add an **Android** OAuth client with package name `xyz.chtplus.app` and that
+Add an **Android** OAuth client with package name `com.chtplus.bd` and that
 SHA-1, in the same Google Cloud project as the existing Web client. Repeat with
 your release keystore's SHA-1 (and the Play App Signing SHA-1 once uploaded).
 
