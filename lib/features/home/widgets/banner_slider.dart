@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../core/theme.dart';
 import '../../../core/utils/launchers.dart';
 import '../../../core/widgets/app_network_image.dart';
 import '../../../models/catalog.dart';
 
-/// Auto-advancing hero banner, mirroring `HeroBannerSlider` on the site.
+/// Auto-advancing hero banner, mirroring `HeroBannerSlider` on the site: a
+/// 3:1 frame in the `.hero` strip, with the dots floating over its lower edge.
 class BannerSlider extends StatefulWidget {
   const BannerSlider({super.key, required this.banners});
 
@@ -21,6 +21,14 @@ class _BannerSliderState extends State<BannerSlider> {
   final _controller = PageController();
   Timer? _timer;
   int _index = 0;
+
+  /// `.hero-slider` below 640px: radius 14 and a soft drop shadow.
+  static final _sliderRadius = BorderRadius.circular(14);
+  static const _sliderShadow = BoxShadow(
+    color: Color(0x2E000000),
+    blurRadius: 20,
+    offset: Offset(0, 8),
+  );
 
   @override
   void initState() {
@@ -60,56 +68,69 @@ class _BannerSliderState extends State<BannerSlider> {
     if (widget.banners.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            child: AspectRatio(
-              // Same 3:1 frame as the site, so the whole banner shows uncropped.
-              aspectRatio: 3 / 1,
-              child: PageView.builder(
-                controller: _controller,
-                itemCount: widget.banners.length,
-                onPageChanged: (value) => setState(() => _index = value),
-                itemBuilder: (context, index) {
-                  final banner = widget.banners[index];
-                  return GestureDetector(
-                    onTap: banner.url == null
-                        ? null
-                        : () => Launchers.url(context, banner.url),
-                    child: AppNetworkImage(
-                      url: banner.imageUrl,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholderIcon: Icons.campaign_outlined,
+      // `.hero { padding: clamp(10px, 2vw, 16px) 0 }` plus the 16px container.
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: _sliderRadius,
+          boxShadow: const [_sliderShadow],
+        ),
+        child: ClipRRect(
+          borderRadius: _sliderRadius,
+          child: AspectRatio(
+            // Same 3:1 frame as the site, so the whole banner shows uncropped.
+            aspectRatio: 3 / 1,
+            child: Stack(
+              children: [
+                PageView.builder(
+                  controller: _controller,
+                  itemCount: widget.banners.length,
+                  onPageChanged: (value) => setState(() => _index = value),
+                  itemBuilder: (context, index) {
+                    final banner = widget.banners[index];
+                    return GestureDetector(
+                      onTap: banner.url == null
+                          ? null
+                          : () => Launchers.url(context, banner.url),
+                      child: AppNetworkImage(
+                        url: banner.imageUrl,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholderIcon: Icons.campaign_outlined,
+                      ),
+                    );
+                  },
+                ),
+                if (widget.banners.length > 1)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 6,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        for (var i = 0; i < widget.banners.length; i++)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                            width: i == _index ? 16 : 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: i == _index
+                                  ? Colors.white
+                                  : Colors.white.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(
+                                i == _index ? 4 : 3,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  );
-                },
-              ),
+                  ),
+              ],
             ),
           ),
-          if (widget.banners.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(top: 9),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (var i = 0; i < widget.banners.length; i++)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: i == _index ? 18 : 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: i == _index ? AppColors.forest : AppColors.border,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }

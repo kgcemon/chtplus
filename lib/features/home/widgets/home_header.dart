@@ -23,7 +23,9 @@ class HomeHeader extends ConsumerWidget {
     final parts = _HeaderParts.of(context, ref);
     return SliverAppBar(
       pinned: true,
-      elevation: 0,
+      elevation: 3,
+      scrolledUnderElevation: 3,
+      shadowColor: const Color(0x1F000000),
       toolbarHeight: _HeaderParts.height,
       backgroundColor: AppColors.forestDark,
       automaticallyImplyLeading: false,
@@ -51,7 +53,9 @@ class SiteAppBar extends ConsumerWidget implements PreferredSizeWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final parts = _HeaderParts.of(context, ref);
     return AppBar(
-      elevation: 0,
+      elevation: 3,
+      scrolledUnderElevation: 3,
+      shadowColor: const Color(0x1F000000),
       toolbarHeight: _HeaderParts.height,
       backgroundColor: AppColors.forestDark,
       automaticallyImplyLeading: false,

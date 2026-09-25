@@ -180,7 +180,7 @@ class _CategoryBrowserState extends ConsumerState<_CategoryBrowser> {
                     itemCount: shown.length,
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 3,
-                      mainAxisExtent: 104,
+                      mainAxisExtent: 110,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
                     ),
@@ -189,6 +189,7 @@ class _CategoryBrowserState extends ConsumerState<_CategoryBrowser> {
                       return HomeTile(
                         emoji: (category.icon ?? '').isEmpty ? '📌' : category.icon!,
                         label: category.name,
+                        maxLines: 2,
                         onTap: () => widget.onPick(category),
                       );
                     },

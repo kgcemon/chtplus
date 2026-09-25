@@ -161,6 +161,7 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
                             return HomeTile(
                               emoji: emoji,
                               label: label,
+                              maxLines: 2,
                               onTap: () {
                                 _search.text = q;
                                 _update((f) => f.copyWith(q: q, departmentId: null));
@@ -172,6 +173,7 @@ class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
                           return HomeTile(
                             emoji: _departmentIcon(d.name),
                             label: d.name,
+                            maxLines: 2,
                             selected: selected,
                             // Tapping the chosen department again clears it.
                             onTap: () => _update(

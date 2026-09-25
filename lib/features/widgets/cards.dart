@@ -51,8 +51,9 @@ class ServiceCard extends StatelessWidget {
                         label: category,
                         color: AppColors.textSecondary,
                         background: AppColors.forestLight,
-                        weight: FontWeight.w500,
+                        weight: FontWeight.w400,
                         fontSize: compact ? 10 : 12,
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       ),
                     ),
                   const Spacer(),
@@ -61,6 +62,7 @@ class ServiceCard extends StatelessWidget {
                       label: 'Sponsored',
                       color: Color(0xFF9A6700),
                       background: Color(0xFFFFF3D6),
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     ),
                 ],
               ),
@@ -88,17 +90,19 @@ class ServiceCard extends StatelessWidget {
                 ],
               ),
               if (service.preview.isNotEmpty) ...[
-                SizedBox(height: gap),
+                // `.desc` carries a paragraph's 13px margin on top of the gap.
+                SizedBox(height: gap + 13),
                 Text(
                   service.preview,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: compact ? 11 : 13,
+                  style: const TextStyle(
+                    fontSize: 13,
                     height: 1.5,
                     color: AppColors.textSecondary,
                   ),
                 ),
+                const SizedBox(height: 13),
               ],
               if (area.isNotEmpty) ...[
                 SizedBox(height: gap),
@@ -114,7 +118,8 @@ class ServiceCard extends StatelessWidget {
               ],
               SizedBox(height: gap),
               const Divider(height: 1, color: AppColors.border),
-              SizedBox(height: compact ? 8 : 10),
+              // `.info-card-footer { padding-top: 10px }`.
+              const SizedBox(height: 10),
               RatingStars(
                 rating: service.rating,
                 count: service.ratingCount,
@@ -125,8 +130,8 @@ class ServiceCard extends StatelessWidget {
                 onPressed: () => Launchers.call(context, service.phone),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.forest,
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  minimumSize: const Size.fromHeight(32),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size.fromHeight(28),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -191,7 +196,8 @@ class ListingCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              // The cover's own 4px bottom margin, plus the card's 4px gap.
+              const SizedBox(height: 8),
               Row(
                 children: [
                   if (category.isNotEmpty)
@@ -200,7 +206,8 @@ class ListingCard extends StatelessWidget {
                         label: category,
                         color: AppColors.textSecondary,
                         background: AppColors.forestLight,
-                        weight: FontWeight.w500,
+                        weight: FontWeight.w400,
+                        fontSize: 8.5,
                       ),
                     ),
                   if (listing.paid) ...[
@@ -209,6 +216,7 @@ class ListingCard extends StatelessWidget {
                       label: 'Sponsored',
                       color: Color(0xFF9A6700),
                       background: Color(0xFFFFF3D6),
+                      fontSize: 8.5,
                     ),
                   ],
                 ],
@@ -218,7 +226,7 @@ class ListingCard extends StatelessWidget {
                 listing.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12.5, height: 1.3, fontWeight: FontWeight.w700),
+                style: const TextStyle(fontSize: 11, height: 1.35, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 4),
               Row(
@@ -228,6 +236,7 @@ class ListingCard extends StatelessWidget {
                       label: dataLabel(listing.condition),
                       color: AppColors.forestDark,
                       background: AppColors.forestLight,
+                      fontSize: 8.5,
                     ),
                     const SizedBox(width: 4),
                   ],
@@ -236,19 +245,18 @@ class ListingCard extends StatelessWidget {
                       '📍 $area',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                      style: const TextStyle(fontSize: 9.5, color: AppColors.textSecondary),
                     ),
                   ),
                 ],
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 6),
-                child: Divider(height: 1, color: AppColors.border),
-              ),
+              const SizedBox(height: 4),
+              const Divider(height: 1, color: AppColors.border),
+              const SizedBox(height: 6),
               Text(
                 Fmt.taka(listing.price),
                 style: const TextStyle(
-                  fontSize: 13.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: AppColors.forestDark,
                 ),
@@ -259,10 +267,10 @@ class ListingCard extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.forest,
                   side: const BorderSide(color: AppColors.forest),
-                  padding: const EdgeInsets.symmetric(vertical: 5),
-                  minimumSize: const Size.fromHeight(30),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  minimumSize: const Size.fromHeight(24),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  textStyle: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: const Text('Call'),
@@ -283,6 +291,7 @@ class _Badge extends StatelessWidget {
     required this.background,
     this.weight = FontWeight.w700,
     this.fontSize = 9.5,
+    this.padding = const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
   });
 
   final String label;
@@ -291,10 +300,14 @@ class _Badge extends StatelessWidget {
   final FontWeight weight;
   final double fontSize;
 
+  /// The site sizes these per card family — 1px/5px in the marketplace grid,
+  /// 2px/7px on the service and doctor tiles.
+  final EdgeInsets padding;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+      padding: padding,
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
@@ -395,64 +408,78 @@ class DonorCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (eligible)
-                    FilledButton(
-                      onPressed: () => Launchers.call(context, donor.phone),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.forest,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: const Text('Call'),
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFDECEB),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Text(
-                        'Donated recently',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.red,
+              const SizedBox(width: 14),
+              // As wide as the widest of the button and the two count pills,
+              // with both rows filling it — the site's `align-items: stretch`
+              // on a shrink-to-fit column. Without the intrinsic width, the
+              // stretch would ask for infinite width inside this row.
+              IntrinsicWidth(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (eligible)
+                      FilledButton(
+                        onPressed: () => Launchers.call(context, donor.phone),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.forest,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                          minimumSize: Size.zero,
+                          elevation: 2,
+                          shadowColor: const Color(0x401F7A4D),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text('Call'),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFDECEB),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'Donated recently',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.red,
+                          ),
                         ),
                       ),
+                    const SizedBox(height: 6),
+                    // The pills keep their natural size (which is what sets
+                    // the column's width), and only scale down on a device
+                    // whose emoji measure wider than they did on layout.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _CountPill(
+                            icon: donor.likedByMe ? '❤️' : '🤍',
+                            count: donor.likeCount,
+                            color: AppColors.red,
+                            background: const Color(0xFFFFF5F4),
+                            border: const Color(0xFFF7D9D6),
+                          ),
+                          const SizedBox(width: 6),
+                          _CountPill(
+                            icon: '💬',
+                            count: donor.ratingCount,
+                            color: AppColors.textSecondary,
+                            background: AppColors.surface,
+                            border: AppColors.border,
+                          ),
+                        ],
+                      ),
                     ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      _CountPill(
-                        icon: donor.likedByMe ? '❤️' : '🤍',
-                        count: donor.likeCount,
-                        color: AppColors.red,
-                        background: const Color(0xFFFFF5F4),
-                        border: const Color(0xFFF7D9D6),
-                      ),
-                      const SizedBox(width: 6),
-                      _CountPill(
-                        icon: '💬',
-                        count: donor.ratingCount,
-                        color: AppColors.textSecondary,
-                        background: AppColors.surface,
-                        border: AppColors.border,
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -481,7 +508,7 @@ class _CountPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
@@ -489,6 +516,9 @@ class _CountPill extends StatelessWidget {
       ),
       child: Text(
         '$icon $count',
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
       ),
     );
@@ -548,8 +578,8 @@ class DoctorCard extends StatelessWidget {
                               doctor.qualifications!,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: compact ? 10.5 : 12,
+                              style: const TextStyle(
+                                fontSize: 12,
                                 color: AppColors.textSecondary,
                               ),
                             ),
@@ -560,21 +590,24 @@ class DoctorCard extends StatelessWidget {
                 ],
               ),
               if ((doctor.specialty ?? '').isNotEmpty) ...[
-                SizedBox(height: gap),
+                // `.desc` carries a paragraph's 13px margin on top of the gap.
+                SizedBox(height: gap + 13),
                 Text(
                   doctor.specialty!,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: compact ? 11 : 13,
+                  style: const TextStyle(
+                    fontSize: 13,
                     height: 1.5,
                     color: AppColors.textSecondary,
                   ),
                 ),
+                const SizedBox(height: 13),
               ],
               SizedBox(height: gap),
               const Divider(height: 1, color: AppColors.border),
-              SizedBox(height: compact ? 8 : 10),
+              // `.info-card-footer { padding-top: 10px }`.
+              const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerLeft,
                 child: _CountPill(
@@ -590,8 +623,8 @@ class DoctorCard extends StatelessWidget {
                 onPressed: open,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.forest,
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  minimumSize: const Size.fromHeight(32),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  minimumSize: const Size.fromHeight(28),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

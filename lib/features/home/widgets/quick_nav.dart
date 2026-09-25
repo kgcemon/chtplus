@@ -23,36 +23,28 @@ class QuickNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        itemCount: _items.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          mainAxisExtent: 112,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-        ),
-        itemBuilder: (context, index) {
-          final item = _items[index];
-          return HomeTile(
-            emoji: item.emoji,
-            label: item.label,
-            circle: true,
-            onTap: () {
-              final path = item.path;
-              if (path == null) {
-                _showComingSoon(context);
-              } else if (item.tab) {
-                context.go(path);
-              } else {
-                context.push(path);
-              }
-            },
-          );
-        },
+      // `.quick-nav-section { padding: 10px 0 6px }` plus the 16px container.
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+      child: HomeTileGrid(
+        spacing: 10,
+        children: [
+          for (final item in _items)
+            HomeTile(
+              emoji: item.emoji,
+              label: item.label,
+              circle: true,
+              onTap: () {
+                final path = item.path;
+                if (path == null) {
+                  _showComingSoon(context);
+                } else if (item.tab) {
+                  context.go(path);
+                } else {
+                  context.push(path);
+                }
+              },
+            ),
+        ],
       ),
     );
   }
@@ -83,6 +75,44 @@ class QuickNav extends StatelessWidget {
   }
 }
 
+/// Three tiles to a row, every row only as tall as its own tallest tile —
+/// how `.quick-nav` and `.cat-grid` behave once they wrap to three columns.
+/// A fixed row height would leave a gap under the short labels.
+class HomeTileGrid extends StatelessWidget {
+  const HomeTileGrid({super.key, required this.children, this.spacing = 12});
+
+  final List<Widget> children;
+  final double spacing;
+
+  static const _columns = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var start = 0; start < children.length; start += _columns) {
+      if (rows.isNotEmpty) rows.add(SizedBox(height: spacing));
+      rows.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var column = 0; column < _columns; column++) ...[
+                if (column > 0) SizedBox(width: spacing),
+                Expanded(
+                  child: start + column < children.length
+                      ? children[start + column]
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    return Column(children: rows);
+  }
+}
+
 /// A white bordered tile with an emoji over a label — the site's
 /// `.quick-nav-item` (with [circle]) and `.cat-tile` (without).
 class HomeTile extends StatelessWidget {
@@ -93,6 +123,7 @@ class HomeTile extends StatelessWidget {
     required this.onTap,
     this.circle = false,
     this.selected = false,
+    this.maxLines,
   });
 
   final String emoji;
@@ -100,8 +131,19 @@ class HomeTile extends StatelessWidget {
   final VoidCallback onTap;
   final bool circle;
 
+  /// Left unset the label wraps freely, the way the site's tiles grow to fit.
+  /// Screens that place these in a fixed-height grid cap it instead.
+  final int? maxLines;
+
   /// Drawn filled green, like the site's `.cat-tile-active`.
   final bool selected;
+
+  // A browser rounds these line boxes to whole pixels: 35 for the 26px emoji,
+  // 16 and 15 for the labels. Matching that keeps a row's intrinsic height
+  // equal to the height it is laid out at, so no tile overflows by a fraction.
+  static const _iconBox = 35.0;
+  static const _labelLine = 16.0;
+  static const _quickLabelLine = 15.0;
 
   @override
   Widget build(BuildContext context) {
@@ -115,9 +157,9 @@ class HomeTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+          // `.quick-nav-item { padding: 16px 6px }`, `.cat-tile { 16px 8px }`.
+          padding: EdgeInsets.symmetric(horizontal: circle ? 6 : 8, vertical: 16),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (circle)
                 Container(
@@ -128,21 +170,32 @@ class HomeTile extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
-                  child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                  child: Text(emoji, style: const TextStyle(fontSize: 26, height: 1)),
                 )
               else
-                Text(emoji, style: const TextStyle(fontSize: 26)),
+                SizedBox(
+                  height: _iconBox,
+                  child: Center(
+                    child: Text(emoji, style: const TextStyle(fontSize: 26, height: 1)),
+                  ),
+                ),
               const SizedBox(height: 8),
-              Text(
-                label,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: circle ? 11.5 : 12.5,
-                  height: 1.3,
-                  fontWeight: circle ? FontWeight.w700 : FontWeight.w600,
-                  color: selected ? Colors.white : AppColors.text,
+              // Flexible so a script whose glyphs measure a shade taller than
+              // the line box (Bengali, with its marks) squeezes into the row's
+              // height instead of overflowing it.
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: maxLines,
+                  overflow: maxLines == null ? null : TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: circle ? 11.5 : 12.5,
+                    height: (circle ? _quickLabelLine : _labelLine) /
+                        (circle ? 11.5 : 12.5),
+                    fontWeight: circle ? FontWeight.w700 : FontWeight.w600,
+                    color: selected ? Colors.white : AppColors.text,
+                  ),
                 ),
               ),
             ],

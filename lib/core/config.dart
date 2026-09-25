@@ -17,6 +17,14 @@ class AppConfig {
   static const String aboutUrl = '$apiBase/about';
   static const String websiteUrl = apiBase;
 
+  /// Shown in the home footer and its "Contact" call to action, matching the
+  /// contact block the site renders there.
+  static const String supportPhone = '01828820222';
+  static const String supportWhatsappUrl = 'https://wa.me/8801828820222';
+  static const String officeAddress = 'Khagrachari Sadar, Khagrachari';
+  static const String tagline =
+      'The local services platform for Khagrachari, Rangamati and Bandarban.';
+
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 25);
 

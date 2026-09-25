@@ -4,15 +4,20 @@ import '../../../core/theme.dart';
 import '../../../core/widgets/common.dart';
 
 /// Placeholder that matches the real home layout, so nothing shifts when the
-/// data lands.
+/// data lands: the 3:1 hero, the quick-nav tiles, then a section head over a
+/// category grid and two rows of cards.
 class HomeSkeleton extends StatelessWidget {
   const HomeSkeleton({super.key});
+
+  /// Fixed row heights taken from the tiles they stand in for.
+  static const _quickNavTile = 105.0;
+  static const _categoryTile = 93.0;
 
   @override
   Widget build(BuildContext context) {
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -20,75 +25,86 @@ class HomeSkeleton extends StatelessWidget {
               aspectRatio: 3 / 1,
               child: SkeletonBox(height: double.infinity, radius: AppRadius.card),
             ),
-            const SizedBox(height: 22),
+            // The hero's 10px bottom padding plus the quick nav's 10px top.
+            const SizedBox(height: 20),
+            const _TileGrid(count: 6, extent: _quickNavTile, spacing: 10),
+            // The quick nav's 6px bottom padding plus the section's 18px top.
+            const SizedBox(height: 24),
+            const _SectionHead(),
+            const _TileGrid(count: 6, extent: _categoryTile, spacing: 12),
+            const SizedBox(height: 36),
+            const _SectionHead(),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: 6,
+              padding: EdgeInsets.zero,
+              itemCount: 4,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 1.15,
+                crossAxisCount: 2,
+                mainAxisExtent: 223,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
               ),
-              itemBuilder: (_, __) => const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SkeletonBox(width: 46, height: 46, radius: 14),
-                  SizedBox(height: 8),
-                  SkeletonBox(width: 52, height: 9),
-                ],
+              itemBuilder: (_, __) => const SkeletonBox(
+                height: double.infinity,
+                radius: AppRadius.card,
               ),
             ),
-            const SizedBox(height: 22),
-            const SkeletonBox(width: 150, height: 17),
-            const SizedBox(height: 14),
-            SizedBox(
-              height: 232,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: 3,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (_, __) => const SizedBox(
-                  width: 172,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SkeletonBox(height: 108, radius: AppRadius.card),
-                      SizedBox(height: 10),
-                      SkeletonBox(height: 12),
-                      SizedBox(height: 7),
-                      SkeletonBox(width: 100, height: 10),
-                      SizedBox(height: 7),
-                      SkeletonBox(width: 80, height: 10),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 22),
-            const SkeletonBox(width: 130, height: 17),
-            const SizedBox(height: 14),
-            for (var i = 0; i < 3; i++)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    SkeletonBox(width: 52, height: 52, radius: 26),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SkeletonBox(width: 140, height: 12),
-                          SizedBox(height: 8),
-                          SkeletonBox(width: 90, height: 10),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A title and subtitle bar standing in for `_SectionHead`, including its
+/// 16px bottom margin.
+class _SectionHead extends StatelessWidget {
+  const _SectionHead();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonBox(width: 160, height: 18),
+          SizedBox(height: 6),
+          SkeletonBox(width: 210, height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+class _TileGrid extends StatelessWidget {
+  const _TileGrid({
+    required this.count,
+    required this.extent,
+    required this.spacing,
+  });
+
+  final int count;
+  final double extent;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: count,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisExtent: extent,
+        mainAxisSpacing: spacing,
+        crossAxisSpacing: spacing,
+      ),
+      itemBuilder: (_, __) => const SkeletonBox(
+        height: double.infinity,
+        radius: AppRadius.card,
       ),
     );
   }

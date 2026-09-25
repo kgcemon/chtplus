@@ -42,6 +42,9 @@ class AppShell extends StatelessWidget {
         decoration: const BoxDecoration(
           color: AppColors.surface,
           border: Border(top: BorderSide(color: AppColors.border)),
+          boxShadow: [
+            BoxShadow(color: Color(0x0F000000), blurRadius: 16, offset: Offset(0, -4)),
+          ],
         ),
         child: SafeArea(
           top: false,
@@ -96,7 +99,7 @@ class _NavButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(item.emoji, style: const TextStyle(fontSize: 19, height: 1)),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 item.label,
                 maxLines: 1,

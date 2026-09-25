@@ -9,6 +9,7 @@ import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
 import '../../models/public_profile.dart';
+import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
@@ -26,17 +27,17 @@ class PublicProfileScreen extends ConsumerWidget {
     final profile = ref.watch(publicProfileProvider(userId));
     final me = ref.watch(currentUserProvider);
 
-    return Scaffold(
-      body: profile.when(
-        loading: () => const Scaffold(appBar: SiteAppBar(), body: AppLoader()),
-        error: (error, _) => Scaffold(
-          appBar: const SiteAppBar(),
-          body: ErrorView(
-            message: '$error',
-            onRetry: () => ref.invalidate(publicProfileProvider(userId)),
-          ),
+    return profile.when(
+      loading: () => const Scaffold(appBar: SiteAppBar(), body: AppLoader()),
+      error: (error, _) => Scaffold(
+        appBar: const SiteAppBar(),
+        body: ErrorView(
+          message: '$error',
+          onRetry: () => ref.invalidate(publicProfileProvider(userId)),
         ),
-        data: (data) => _Content(profile: data, isMe: me?.id == data.id),
+      ),
+      data: (data) => Scaffold(
+        body: _Content(profile: data, isMe: me?.id == data.id),
       ),
     );
   }
@@ -52,153 +53,32 @@ class _Content extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final about = ref.watch(userAboutProvider(profile.id)).valueOrNull;
 
-    return CustomScrollView(
-      slivers: [
-        const HomeHeader(),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                height: 150,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.forestDark, AppColors.forest],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: (profile.coverPhotoUrl ?? '').isEmpty
-                    ? null
-                    : AppNetworkImage(
-                        url: profile.coverPhotoUrl,
-                        width: double.infinity,
-                        height: 150,
-                      ),
-              ),
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Transform.translate(
-            offset: const Offset(0, -34),
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(publicProfileProvider(profile.id));
+        ref.invalidate(userAboutProvider(profile.id));
+        await ref.read(publicProfileProvider(profile.id).future);
+      },
+      child: CustomScrollView(
+        slivers: [
+          const HomeHeader(),
+          // The cover and the card under it are one sliver so the profile
+          // photo can overlap the cover: slivers paint in reverse order, which
+          // is what used to draw the cover on top of the photo.
+          SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.bg, width: 4),
-                    ),
-                    child: Avatar(
-                      url: profile.photoUrl,
-                      name: profile.name,
-                      size: 86,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          profile.name,
-                          style: const TextStyle(
-                            fontSize: 21,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      VerifiedBadge(active: profile.blueBadge, size: 18),
-                    ],
-                  ),
-                  if ((profile.bio ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      profile.bio!,
-                      style: const TextStyle(fontSize: 13.5, height: 1.55),
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 14,
-                    runSpacing: 6,
-                    children: [
-                      if ((profile.area ?? '').isNotEmpty)
-                        _Meta(icon: Icons.place_outlined, label: profile.area!),
-                      if ((about?.currentCity ?? '').isNotEmpty)
-                        _Meta(
-                          icon: Icons.home_outlined,
-                          label: 'Lives in ${about!.currentCity}',
-                        ),
-                      if ((about?.hometown ?? '').isNotEmpty)
-                        _Meta(
-                          icon: Icons.cottage_outlined,
-                          label: 'From ${about!.hometown}',
-                        ),
-                      if ((about?.relationshipStatus ?? '').isNotEmpty)
-                        _Meta(
-                          icon: Icons.favorite_outline_rounded,
-                          label: Fmt.relationshipLabel(about!.relationshipStatus),
-                        ),
-                      if (profile.createdAt != null)
-                        _Meta(
-                          icon: Icons.schedule_rounded,
-                          label: 'Joined ${Fmt.date(profile.createdAt)}',
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Text(
-                        '${profile.followerCount}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'followers',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        '${profile.followingCount}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'following',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (!isMe) ...[
-                    const SizedBox(height: 14),
-                    _ActionRow(profile: profile),
-                  ],
+                  _Cover(profile: profile),
+                  _HeaderCard(profile: profile, about: about, isMe: isMe),
                 ],
               ),
             ),
           ),
-        ),
-        if (profile.work.isNotEmpty || profile.education.isNotEmpty)
-          SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -20),
+          if (profile.work.isNotEmpty || profile.education.isNotEmpty)
+            SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -268,11 +148,8 @@ class _Content extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
-        if (profile.donor != null)
-          SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -20),
+          if (profile.donor != null)
+            SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -284,11 +161,8 @@ class _Content extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
-        if (profile.services.isNotEmpty)
-          SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -20),
+          if (profile.services.isNotEmpty)
+            SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -315,11 +189,8 @@ class _Content extends ConsumerWidget {
                 ],
               ),
             ),
-          ),
-        if (profile.listings.isNotEmpty)
-          SliverToBoxAdapter(
-            child: Transform.translate(
-              offset: const Offset(0, -20),
+          if (profile.listings.isNotEmpty)
+            SliverToBoxAdapter(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -346,9 +217,171 @@ class _Content extends ConsumerWidget {
                 ],
               ),
             ),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Cover photo with the round profile photo overlapping its lower edge — the
+/// same cover the signed-in user sees on their own profile.
+class _Cover extends StatelessWidget {
+  const _Cover({required this.profile});
+
+  final PublicProfile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 200,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+            child: Container(
+              height: 150,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.forestDark, AppColors.forest],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: (profile.coverPhotoUrl ?? '').isEmpty
+                  ? null
+                  : AppNetworkImage(
+                      url: profile.coverPhotoUrl,
+                      width: double.infinity,
+                      height: 150,
+                    ),
+            ),
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
-      ],
+          Positioned(
+            left: 16,
+            bottom: 0,
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.surface, width: 4),
+              ),
+              child: Avatar(url: profile.photoUrl, name: profile.name, size: 96),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Name, bio, the about lines, follow counts and the follow/message buttons in
+/// one card, laid out like the signed-in user's own profile.
+class _HeaderCard extends StatelessWidget {
+  const _HeaderCard({
+    required this.profile,
+    required this.about,
+    required this.isMe,
+  });
+
+  final PublicProfile profile;
+  final UserAbout? about;
+  final bool isMe;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = <Widget>[
+      if ((profile.area ?? '').isNotEmpty)
+        _Meta(icon: Icons.place_outlined, label: profile.area!),
+      if ((about?.currentCity ?? '').isNotEmpty)
+        _Meta(
+          icon: Icons.home_outlined,
+          label: 'Lives in ${about!.currentCity}',
+        ),
+      if ((about?.hometown ?? '').isNotEmpty)
+        _Meta(icon: Icons.cottage_outlined, label: 'From ${about!.hometown}'),
+      if ((about?.relationshipStatus ?? '').isNotEmpty)
+        _Meta(
+          icon: Icons.favorite_outline_rounded,
+          label: Fmt.relationshipLabel(about!.relationshipStatus),
+        ),
+      if (profile.createdAt != null)
+        _Meta(
+          icon: Icons.schedule_rounded,
+          label: 'Joined ${Fmt.date(profile.createdAt)}',
+        ),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Flexible(
+                child: Text(
+                  profile.name,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              VerifiedBadge(active: profile.blueBadge, size: 18),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: '${profile.followerCount}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                ),
+                const TextSpan(text: ' Followers · '),
+                TextSpan(
+                  text: '${profile.followingCount}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text,
+                  ),
+                ),
+                const TextSpan(text: ' Following'),
+              ],
+            ),
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          if ((profile.bio ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              profile.bio!,
+              style: const TextStyle(fontSize: 13.5, height: 1.55),
+            ),
+          ],
+          if (meta.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 14),
+              child: Divider(height: 1, color: AppColors.border),
+            ),
+            Wrap(spacing: 14, runSpacing: 8, children: meta),
+          ],
+          if (!isMe) ...[
+            const SizedBox(height: 16),
+            _ActionRow(profile: profile),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config.dart';
 import '../../core/theme.dart';
+import '../../core/utils/launchers.dart';
 import '../../core/widgets/common.dart';
 import '../../models/catalog.dart';
 import '../../providers/auth_provider.dart';
@@ -90,7 +92,8 @@ class HomeScreen extends ConsumerWidget {
             _ => const SizedBox.shrink(),
           },
         ),
-      SliverToBoxAdapter(child: _FooterCta(onAdd: add)),
+      const SliverToBoxAdapter(child: _FooterCta()),
+      const SliverToBoxAdapter(child: _SiteFooter()),
     ];
   }
 
@@ -117,7 +120,7 @@ class HomeScreen extends ConsumerWidget {
           categories: data.serviceCategories.take(6).toList(),
           onTap: (c) => context.go('${Routes.services}?category=${c.id}'),
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 36),
         const _SectionHead(
           title: 'Popular Providers',
           subtitle: 'Top-rated and verified service providers',
@@ -155,7 +158,7 @@ class HomeScreen extends ConsumerWidget {
           const _EmptyNote('No blood donors have been added')
         else
           for (final (i, donor) in data.donors.take(5).indexed) ...[
-            if (i > 0) const SizedBox(height: 12),
+            if (i > 0) const SizedBox(height: 14),
             DonorCard(donor: donor),
           ],
       ],
@@ -183,7 +186,7 @@ class HomeScreen extends ConsumerWidget {
           categories: data.marketplaceCategories,
           onTap: (c) => context.go('${Routes.marketplace}?category=${c.id}'),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 24),
         if (data.listings.isEmpty)
           const _EmptyNote('No products have been added')
         else
@@ -265,7 +268,7 @@ class _Section extends StatelessWidget {
     return ColoredBox(
       color: tint,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: children,
@@ -292,8 +295,9 @@ class _SectionHead extends StatelessWidget {
   final String? actionLabel;
   final VoidCallback? onAction;
 
-  static const _buttonPadding = EdgeInsets.symmetric(horizontal: 10, vertical: 7);
-  static const _buttonText = TextStyle(fontSize: 12, fontWeight: FontWeight.w600);
+  // `.section-head-actions .btn` below 480px: `padding: 6px 8px; font-size: 11px`.
+  static const _buttonPadding = EdgeInsets.symmetric(horizontal: 8, vertical: 6);
+  static const _buttonText = TextStyle(fontSize: 11, fontWeight: FontWeight.w600);
   static final _buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(8));
 
   @override
@@ -311,14 +315,14 @@ class _SectionHead extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.text,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -369,25 +373,15 @@ class _CategoryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemCount: categories.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisExtent: 104,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-      ),
-      itemBuilder: (context, index) {
-        final category = categories[index];
-        return HomeTile(
-          emoji: (category.icon ?? '').isEmpty ? '📌' : category.icon!,
-          label: category.name,
-          onTap: () => onTap(category),
-        );
-      },
+    return HomeTileGrid(
+      children: [
+        for (final category in categories)
+          HomeTile(
+            emoji: (category.icon ?? '').isEmpty ? '📌' : category.icon!,
+            label: category.name,
+            onTap: () => onTap(category),
+          ),
+      ],
     );
   }
 }
@@ -429,7 +423,8 @@ class _EmptyNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      // `.empty-note` has 10px of padding inside a paragraph's own 13.5px margin.
+      padding: const EdgeInsets.symmetric(vertical: 23.5),
       child: Text(
         message,
         style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
@@ -438,15 +433,15 @@ class _EmptyNote extends StatelessWidget {
   }
 }
 
+/// The site's `.cta` panel: one gradient card in a plain `.section`, with the
+/// single Contact button the site shows there.
 class _FooterCta extends StatelessWidget {
-  const _FooterCta({required this.onAdd});
-
-  final void Function(String path) onAdd;
+  const _FooterCta();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -465,40 +460,128 @@ class _FooterCta extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
                 height: 1.3,
               ),
             ),
             const SizedBox(height: 6),
             const Text(
               'Join CHT Plus and reach thousands of people.',
-              style: TextStyle(color: Color(0xD9FFFFFF), fontSize: 13.5, height: 1.5),
+              style: TextStyle(color: Color(0xD9FFFFFF), fontSize: 13.5, height: 1.3),
             ),
             const SizedBox(height: 18),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                FilledButton(
-                  onPressed: () => onAdd('/services/add'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.forestDark,
-                  ),
-                  child: const Text('Add a service'),
-                ),
-                OutlinedButton(
-                  onPressed: () => onAdd('/marketplace/sell'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white54),
-                  ),
-                  child: const Text('Sell an item'),
-                ),
-              ],
+            FilledButton(
+              onPressed: () => Launchers.call(context, AppConfig.supportPhone),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.forestDark,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('\u{1F4DE} Contact'),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The site's `.site-footer`: logo and tagline, the useful links, then the
+/// contact block over a thin divider and the copyright line.
+class _SiteFooter extends StatelessWidget {
+  const _SiteFooter();
+
+  /// `rgba(255, 255, 255, .75)`, the colour of every footer link and note.
+  static const _muted = Color(0xBFFFFFFF);
+  static const _linkStyle = TextStyle(fontSize: 13, color: _muted, height: 1.3);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      // `.site-footer { padding: 36px 0 20px; margin-top: 12px }`.
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.fromLTRB(16, 36, 16, 20),
+      color: AppColors.forestDark,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Align(alignment: Alignment.centerLeft, child: SiteLogo(height: 44)),
+          const SizedBox(height: 25),
+          const Text(AppConfig.tagline, style: _linkStyle),
+          const SizedBox(height: 24),
+          const _FooterHeading('Useful links'),
+          _FooterLink('Services', () => context.go(Routes.services)),
+          _FooterLink('Marketplace', () => context.go(Routes.marketplace)),
+          _FooterLink('Matrimony', () => context.go(Routes.biodata)),
+          _FooterLink('Doctor Appointments', () => context.push(Routes.doctors)),
+          _FooterLink('Blood Donors', () => context.go(Routes.donors)),
+          _FooterLink('About Us', () => Launchers.url(context, AppConfig.aboutUrl)),
+          const SizedBox(height: 16),
+          const _FooterHeading('Contact'),
+          _FooterLink(
+            '\u{1F4DE} ${AppConfig.supportPhone}',
+            () => Launchers.call(context, AppConfig.supportPhone),
+          ),
+          _FooterLink(
+            '\u{1F4AC} WhatsApp: ${AppConfig.supportPhone}',
+            () => Launchers.url(context, AppConfig.supportWhatsappUrl),
+          ),
+          const SizedBox(height: 13),
+          const Text('\u{1F4CD} ${AppConfig.officeAddress}', style: _linkStyle),
+          const SizedBox(height: 24),
+          const Divider(height: 1, thickness: 1, color: Color(0x26FFFFFF)),
+          const SizedBox(height: 16),
+          const Center(
+            child: Text(
+              'Copyright \u00A9 2026 CHT Plus. All rights reserved',
+              style: TextStyle(fontSize: 12.5, color: Color(0x99FFFFFF)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FooterHeading extends StatelessWidget {
+  const _FooterHeading(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+
+class _FooterLink extends StatelessWidget {
+  const _FooterLink(this.label, this.onTap);
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Text(label, style: _SiteFooter._linkStyle),
       ),
     );
   }
