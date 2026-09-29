@@ -142,6 +142,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   subtitle: 'Set each profile field to public, followers or only me',
                   onTap: () => context.push('/profile/edit'),
                 ),
+                const Divider(height: 1, indent: 56),
+                _Tile(
+                  icon: Icons.block_rounded,
+                  label: 'Blocked users',
+                  subtitle: 'People you blocked cannot message you',
+                  onTap: () => context.push(Routes.blockedUsers),
+                ),
               ],
             ),
             const _GroupLabel('Account'),
@@ -180,7 +187,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Sign in to post services, sell items, message people and book appointments.',
+                      'Sign in to post services, sell items and message people.',
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -215,6 +222,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const Divider(height: 1, indent: 56),
               _Tile(
+                icon: Icons.gavel_rounded,
+                label: 'Terms of use',
+                onTap: () => Launchers.url(context, AppConfig.termsUrl),
+              ),
+              const Divider(height: 1, indent: 56),
+              _Tile(
                 icon: Icons.language_rounded,
                 label: 'Open the website',
                 subtitle: AppConfig.websiteUrl.replaceFirst('https://', ''),
@@ -225,7 +238,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.share_outlined,
                 label: 'Share CHT Plus',
                 onTap: () => Launchers.share(
-                  'CHT Plus — local services, blood donors, marketplace, matrimony and doctor appointments for Khagrachari, Rangamati and Bandarban.\n${AppConfig.websiteUrl}',
+                  'CHT Plus — local services, blood donors, marketplace and matrimony for Khagrachari, Rangamati and Bandarban.\n${AppConfig.websiteUrl}',
                 ),
               ),
             ],

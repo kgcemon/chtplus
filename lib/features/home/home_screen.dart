@@ -29,7 +29,6 @@ class HomeScreen extends ConsumerWidget {
   static const _donorsTint = Color(0xFFFDECEB);
   static const _marketplaceTint = Color(0xFFEEF3FB);
   static const _biodataTint = Color(0xFFF8EEF8);
-  static const _doctorsTint = Color(0xFFEAFAF8);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -88,7 +87,6 @@ class HomeScreen extends ConsumerWidget {
             'donors' => _donorsSection(context, data, add),
             'marketplace' => _marketplaceSection(context, data, add),
             'biodata' => _biodataSection(context, data, add),
-            'doctors' => _doctorsSection(context, data),
             _ => const SizedBox.shrink(),
           },
         ),
@@ -224,30 +222,6 @@ class HomeScreen extends ConsumerWidget {
             spacing: 8,
             children: [
               for (final b in data.biodata.take(6)) BiodataCard(biodata: b),
-            ],
-          ),
-      ],
-    );
-  }
-
-  // --- Doctors ---------------------------------------------------------------
-
-  Widget _doctorsSection(BuildContext context, HomeFeed data) {
-    return _Section(
-      tint: _doctorsTint,
-      children: [
-        _SectionHead(
-          title: 'Doctor Appointments',
-          subtitle: 'Book an appointment with an experienced doctor.',
-          actionLabel: 'View all',
-          onAction: () => context.push(Routes.doctors),
-        ),
-        if (data.doctors.isEmpty)
-          const _EmptyNote('No doctors have been added')
-        else
-          _CardGrid(
-            children: [
-              for (final d in data.doctors.take(6)) DoctorCard(doctor: d, compact: true),
             ],
           ),
       ],
@@ -517,7 +491,6 @@ class _SiteFooter extends StatelessWidget {
           _FooterLink('Services', () => context.go(Routes.services)),
           _FooterLink('Marketplace', () => context.go(Routes.marketplace)),
           _FooterLink('Matrimony', () => context.go(Routes.biodata)),
-          _FooterLink('Doctor Appointments', () => context.push(Routes.doctors)),
           _FooterLink('Blood Donors', () => context.go(Routes.donors)),
           _FooterLink('About Us', () => Launchers.url(context, AppConfig.aboutUrl)),
           const SizedBox(height: 16),

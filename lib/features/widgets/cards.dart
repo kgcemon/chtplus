@@ -8,7 +8,6 @@ import '../../core/utils/launchers.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/common.dart';
 import '../../models/biodata.dart';
-import '../../models/doctor.dart';
 import '../../models/donor.dart';
 import '../../models/listing.dart';
 import '../../models/service.dart';
@@ -301,7 +300,7 @@ class _Badge extends StatelessWidget {
   final double fontSize;
 
   /// The site sizes these per card family — 1px/5px in the marketplace grid,
-  /// 2px/7px on the service and doctor tiles.
+  /// 2px/7px on the service tiles.
   final EdgeInsets padding;
 
   @override
@@ -520,120 +519,6 @@ class _CountPill extends StatelessWidget {
         softWrap: false,
         overflow: TextOverflow.clip,
         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color),
-      ),
-    );
-  }
-}
-
-/// A doctor tile as the site's `DoctorCard` draws it: avatar with name and
-/// qualifications, the specialty, then the love count beside a "View profile"
-/// button. [compact] is the two-per-row phone size.
-class DoctorCard extends StatelessWidget {
-  const DoctorCard({super.key, required this.doctor, this.compact = false});
-
-  final DoctorSummary doctor;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    void open() => context.push('/doctors/${doctor.id}');
-    final gap = compact ? 6.0 : 10.0;
-
-    return Material(
-      color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        side: const BorderSide(color: AppColors.border),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: open,
-        child: Padding(
-          padding: EdgeInsets.all(compact ? 12 : 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Avatar(url: doctor.photoUrl, name: doctor.name, size: compact ? 32 : 44),
-                  SizedBox(width: compact ? 6 : 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          doctor.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: compact ? 12.5 : 15.5,
-                            height: 1.3,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        if ((doctor.qualifications ?? '').isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(
-                              doctor.qualifications!,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if ((doctor.specialty ?? '').isNotEmpty) ...[
-                // `.desc` carries a paragraph's 13px margin on top of the gap.
-                SizedBox(height: gap + 13),
-                Text(
-                  doctor.specialty!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 13),
-              ],
-              SizedBox(height: gap),
-              const Divider(height: 1, color: AppColors.border),
-              // `.info-card-footer { padding-top: 10px }`.
-              const SizedBox(height: 10),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: _CountPill(
-                  icon: doctor.likedByMe ? '❤️' : '🤍',
-                  count: doctor.likeCount,
-                  color: AppColors.red,
-                  background: const Color(0xFFFFF5F4),
-                  border: const Color(0xFFF7D9D6),
-                ),
-              ),
-              const SizedBox(height: 6),
-              FilledButton(
-                onPressed: open,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.forest,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  minimumSize: const Size.fromHeight(28),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('View profile'),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

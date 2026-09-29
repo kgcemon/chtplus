@@ -6,10 +6,10 @@ import '../data/billing_repository.dart';
 import '../data/biodata_repository.dart';
 import '../data/catalog_repository.dart';
 import '../data/chat_repository.dart';
-import '../data/doctor_repository.dart';
 import '../data/donor_repository.dart';
 import '../data/marketplace_repository.dart';
 import '../data/me_repository.dart';
+import '../data/moderation_repository.dart';
 import '../data/review_repository.dart';
 import '../data/service_repository.dart';
 
@@ -23,9 +23,6 @@ final catalogRepositoryProvider =
 
 final serviceRepositoryProvider =
     Provider<ServiceRepository>((ref) => ServiceRepository(ref.watch(apiClientProvider)));
-
-final doctorRepositoryProvider =
-    Provider<DoctorRepository>((ref) => DoctorRepository(ref.watch(apiClientProvider)));
 
 final donorRepositoryProvider =
     Provider<DonorRepository>((ref) => DonorRepository(ref.watch(apiClientProvider)));
@@ -41,6 +38,9 @@ final chatRepositoryProvider =
 
 final meRepositoryProvider =
     Provider<MeRepository>((ref) => MeRepository(ref.watch(apiClientProvider)));
+
+final moderationRepositoryProvider = Provider<ModerationRepository>(
+    (ref) => ModerationRepository(ref.watch(apiClientProvider)));
 
 final reviewRepositoryProvider =
     Provider<ReviewRepository>((ref) => ReviewRepository(ref.watch(apiClientProvider)));

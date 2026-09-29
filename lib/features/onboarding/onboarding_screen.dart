@@ -45,12 +45,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       title: 'Matrimony',
       blurb: 'Verified biodata for marriage',
     ),
-    (
-      key: 'doctors',
-      emoji: '🩺',
-      title: 'Doctors',
-      blurb: 'Book a serial with a doctor',
-    ),
   ];
 
   final _selected = <String>{};

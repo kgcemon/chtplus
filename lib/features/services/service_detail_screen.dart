@@ -10,8 +10,10 @@ import '../../core/widgets/html_text.dart';
 import '../../core/widgets/photo_gallery.dart';
 import '../../models/service.dart';
 import '../../providers/feature_providers.dart';
+import '../../data/moderation_repository.dart';
 import '../widgets/detail_parts.dart';
 import '../widgets/reviews_section.dart';
+import '../widgets/moderation.dart';
 
 /// A provider's details, drawn like the site's service popup: sponsor
 /// ribbon, "category · area" header, photo beside name / owner / Call /
@@ -145,6 +147,8 @@ class _Content extends StatelessWidget {
         HtmlText(html: s.description),
         const SizedBox(height: 16),
         ReviewsSection(targetType: 'service', targetId: s.id),
+        const SizedBox(height: 8),
+        ReportLink(target: ReportTarget.service, targetId: s.id, what: 'service'),
       ],
     );
   }

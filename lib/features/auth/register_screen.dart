@@ -184,6 +184,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                         ),
                         GestureDetector(
+                          onTap: () => Launchers.url(context, AppConfig.termsUrl),
+                          child: const Text(
+                            'terms of use',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.forestDark,
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        const Text(
+                          ' and ',
+                          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                        ),
+                        GestureDetector(
                           onTap: () =>
                               Launchers.url(context, AppConfig.privacyPolicyUrl),
                           child: const Text(

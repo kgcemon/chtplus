@@ -36,12 +36,6 @@ class AboutScreen extends StatelessWidget {
       blurb:
           'Admin-verified biodata with full education, family and expectation details, unlocked with coins or a subscription.',
     ),
-    (
-      emoji: '🩺',
-      title: 'Doctor appointments',
-      blurb:
-          'Find a doctor by department or hospital and book a serial for an open date, then track it under your appointments.',
-    ),
   ];
 
   @override
@@ -94,7 +88,7 @@ class AboutScreen extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           const Text(
-            'CHT Plus brings the everyday services of the Chittagong Hill Tracts into one place — so finding a plumber, a blood donor, a second-hand phone, a doctor\'s serial or a marriage proposal does not mean asking around town.',
+            'CHT Plus brings the everyday services of the Chittagong Hill Tracts into one place — so finding a plumber, a blood donor, a second-hand phone or a marriage proposal does not mean asking around town.',
             style: TextStyle(fontSize: 14, height: 1.65),
           ),
           const SizedBox(height: 26),

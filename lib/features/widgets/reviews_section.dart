@@ -7,11 +7,13 @@ import '../../core/theme.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/dialogs.dart';
+import '../../data/moderation_repository.dart';
 import '../../models/engagement.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import 'moderation.dart';
 
 /// Ratings, loves and replies for a service or a blood-donor profile.
 class ReviewsSection extends ConsumerWidget {
@@ -273,6 +275,19 @@ class _ReviewTileState extends ConsumerState<_ReviewTile> {
                 onTap: () => setState(() => _showReplies = !_showReplies),
               ),
               const Spacer(),
+              IconButton(
+                tooltip: 'Report review',
+                icon: const Icon(Icons.flag_outlined, size: 18),
+                color: AppColors.textSecondary,
+                visualDensity: VisualDensity.compact,
+                onPressed: () => Moderation.report(
+                  context,
+                  ref,
+                  target: ReportTarget.review,
+                  targetId: '${review.id}',
+                  what: 'this review',
+                ),
+              ),
               TextButton(
                 onPressed: _reply,
                 style: TextButton.styleFrom(

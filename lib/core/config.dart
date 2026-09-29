@@ -15,6 +15,7 @@ class AppConfig {
   static const String appName = 'CHT Plus';
   static const String privacyPolicyUrl = '$apiBase/privacy-policy';
   static const String aboutUrl = '$apiBase/about';
+  static const String termsUrl = '$apiBase/terms';
   static const String websiteUrl = apiBase;
 
   /// Shown in the home footer and its "Contact" call to action, matching the

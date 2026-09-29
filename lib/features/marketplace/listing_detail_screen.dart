@@ -10,9 +10,11 @@ import '../../core/widgets/common.dart';
 import '../../models/listing.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import '../../data/moderation_repository.dart';
 import '../home/widgets/home_header.dart';
 import '../widgets/cards.dart';
 import '../widgets/detail_parts.dart';
+import '../widgets/moderation.dart';
 
 /// A product page laid out like the site's listing page on a phone: category
 /// trail, photo gallery, title, poster, meta, price and description, then the
@@ -185,6 +187,8 @@ class _Content extends StatelessWidget {
           'Pay only when you are satisfied',
         ],
       ),
+      const SizedBox(height: 8),
+      ReportLink(target: ReportTarget.listing, targetId: l.id, what: 'listing'),
       if (l.related.isNotEmpty) ...[
         const SizedBox(height: 32),
         const Text(

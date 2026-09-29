@@ -1,12 +1,16 @@
 # CHT Plus — mobile app
 
 The Flutter client for **chtplus.xyz**: local services, blood donors, a
-marketplace, matrimony biodata and doctor appointments for Khagrachari,
-Rangamati and Bandarban.
+marketplace and matrimony biodata for Khagrachari, Rangamati and Bandarban.
+
+Doctor appointments exist on the website only. They were taken out of the app
+because Google Play only lets organization developer accounts publish apps
+with health features, and this app is published from a personal account.
 
 It talks to the existing Next.js backend in `khagrachariPlusNackend` over the
-REST routes under `/api`. **No new backend endpoint was added** — every screen
-is built on a route that already existed.
+REST routes under `/api`. The only endpoints added for the app are the
+report and block ones (`/api/reports`, `/api/users/:id/block`,
+`/api/me/blocks`), which Google Play requires for user-generated content.
 
 ---
 
@@ -37,8 +41,8 @@ flutter run --dart-define=CHT_API_BASE=http://10.0.2.2:3000
 | **Blood donors** | Filter by group, district, area and availability. Donor detail with likes, reviews and call/SMS. Register or update your own donor profile. |
 | **Marketplace** | Category and subcategory navigation, condition/area filters, sorting, detail with specifications, seller chat and call. Sell, edit, delete and promote your adverts. |
 | **Matrimony** | Verified biodata list with gender/age/district/status filters, locked teaser + coin or package unlock, full record once unlocked, four-step submission wizard, my biodata. |
-| **Doctors** | Search by name/specialty, department and hospital filters, doctor detail with chambers and next available dates, two-step serial booking, my appointments with cancel. |
 | **Social** | Public profiles, follow/unfollow, followers and following lists, reviews with loves and replies, direct messaging with unread badges. |
+| **Safety** | Report any profile, service, donor, advert, biodata, review or chat (`POST /api/reports`, reviewed in Admin → Reports). Block users from their profile or a chat; Settings → Blocked users to unblock. Sign-up links the Terms of use (`/terms`). |
 | **Account** | Profile with cover and avatar upload, bio and per-field privacy (public / followers / only me), work and education, saved items, notifications, coins and subscription, settings, account deletion. |
 
 ---
@@ -198,7 +202,8 @@ keytool -list -v -keystore C:\Users\emon\keystores\chtplus-release.jks -alias ch
 | Permissions | See the full merged list below — the app declares two, the plugins add the rest. No storage permission (system photo picker) and camera is `required="false"` |
 | Target SDK | 36, compiled against 36 — meets Play's current requirement |
 | Payments | None in-app. Coins are paid for over bKash/Nagad outside the app and credited by an admin, so Play Billing does not apply. Do not describe them as an in-app purchase on the store listing |
-| User-generated content | Every service, advert and biodata is admin-reviewed before it is public; safety notes appear on listing and matrimony screens |
+| User-generated content | Every service, advert and biodata is admin-reviewed before it is public; safety notes appear on listing and matrimony screens. In-app Report and Block on all user content, Terms of use with a zero-tolerance rule accepted at sign-up |
+| Health apps | None — doctor appointments are website-only. Declare "My app does not have any health features" |
 | Data safety form | Declare: name, email, phone, photos, approximate location (district/area), messages — collected, linked to the user, used for app functionality, deletable in-app |
 | App icon | **Still the Flutter placeholder — replace before publishing** (see below) |
 

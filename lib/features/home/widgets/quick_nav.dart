@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme.dart';
 import '../../../router.dart';
 
-/// The six shortcut tiles the website puts directly under the hero banner:
+/// The shortcut tiles the website puts directly under the hero banner:
 /// white bordered cards, three per row on a phone, with the emoji in a soft
 /// green circle.
 class QuickNav extends StatelessWidget {
@@ -15,7 +15,6 @@ class QuickNav extends StatelessWidget {
     _QuickItem('🩸', 'Blood Donors', Routes.donors, tab: true),
     _QuickItem('🛒', 'Marketplace', Routes.marketplace, tab: true),
     _QuickItem('💍', 'Matrimony', Routes.biodata, tab: true),
-    _QuickItem('🩺', 'Doctor Appointments', Routes.doctors),
     // Not open yet: the site shows a "coming soon" popup instead of a page.
     _QuickItem('🧳', 'Tour & Travels', null),
   ];

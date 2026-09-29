@@ -1,13 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
-import '../data/doctor_repository.dart';
 import '../data/donor_repository.dart';
 import '../data/marketplace_repository.dart';
+import '../data/moderation_repository.dart';
 import '../data/service_repository.dart';
 import '../models/biodata.dart';
 import '../models/billing.dart';
-import '../models/doctor.dart';
 import '../models/donor.dart';
 import '../models/engagement.dart';
 import '../models/listing.dart';
@@ -34,33 +33,6 @@ final serviceDetailProvider =
 
 final myServicesProvider = FutureProvider.autoDispose<List<ServiceItem>>(
   (ref) => ref.watch(serviceRepositoryProvider).mine(),
-);
-
-// --- Doctors ----------------------------------------------------------------
-
-final doctorFiltersProvider =
-    StateProvider<DoctorFilters>((ref) => const DoctorFilters());
-
-final doctorsProvider = FutureProvider.autoDispose<List<DoctorSummary>>((ref) {
-  final filters = ref.watch(doctorFiltersProvider);
-  return ref.watch(doctorRepositoryProvider).list(filters);
-});
-
-final doctorDetailProvider =
-    FutureProvider.autoDispose.family<DoctorDetail, String>((ref, id) {
-  return ref.watch(doctorRepositoryProvider).detail(id);
-});
-
-final chamberAvailabilityProvider = FutureProvider.autoDispose
-    .family<List<AvailableDate>, ({String doctorId, String chamberId})>((ref, args) {
-  return ref.watch(doctorRepositoryProvider).availability(
-        doctorId: args.doctorId,
-        chamberId: args.chamberId,
-      );
-});
-
-final myAppointmentsProvider = FutureProvider.autoDispose<List<Serial>>(
-  (ref) => ref.watch(doctorRepositoryProvider).myAppointments(),
 );
 
 // --- Donors -----------------------------------------------------------------
@@ -266,6 +238,18 @@ final publicProfileProvider =
 final userAboutProvider =
     FutureProvider.autoDispose.family<UserAbout, String>((ref, id) {
   return ref.watch(meRepositoryProvider).about(id);
+});
+
+// --- Moderation -------------------------------------------------------------
+
+final blockedUsersProvider = FutureProvider.autoDispose<List<BlockedUser>>(
+  (ref) => ref.watch(moderationRepositoryProvider).blocked(),
+);
+
+final isBlockedProvider =
+    FutureProvider.autoDispose.family<bool, String>((ref, id) async {
+  if (!ref.watch(isSignedInProvider)) return false;
+  return ref.watch(moderationRepositoryProvider).isBlocked(id);
 });
 
 final isFollowingProvider =

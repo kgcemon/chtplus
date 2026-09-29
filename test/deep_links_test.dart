@@ -34,8 +34,7 @@ void main() {
       expect(appRouteForLink('/u/u_1700000000000'), '/u/u_1700000000000');
     });
 
-    test('serial and coin decisions open their own screens', () {
-      expect(appRouteForLink('/my-appointments'), '/my-appointments');
+    test('coin decisions open their own screen', () {
       expect(appRouteForLink('/coins'), '/coins');
     });
   });
@@ -58,6 +57,9 @@ void main() {
     test('an unknown site path gives null', () {
       expect(appRouteForLink('/admin/settings'), isNull);
       expect(appRouteForLink('/privacy-policy'), isNull);
+      // Doctor appointments are website-only; the app has no screen for them.
+      expect(appRouteForLink('/my-appointments'), isNull);
+      expect(appRouteForLink('/doctors/doc_1'), isNull);
     });
 
     test('a bare prefix with no id is not treated as a detail route', () {

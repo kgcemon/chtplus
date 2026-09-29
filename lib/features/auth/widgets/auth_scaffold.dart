@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config.dart';
 import '../../../core/theme.dart';
+import '../../../core/utils/launchers.dart';
 import '../../../core/widgets/app_snackbar.dart';
 import '../../../providers/catalog_providers.dart';
 import '../../../router.dart';
@@ -224,7 +226,23 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
             shape: const StadiumBorder(),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 8),
+        Wrap(
+          alignment: WrapAlignment.center,
+          children: [
+            const Text(
+              'By continuing you agree to the ',
+              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+            ),
+            _LegalLink('Terms of use', AppConfig.termsUrl),
+            const Text(
+              ' and ',
+              style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+            ),
+            _LegalLink('Privacy policy', AppConfig.privacyPolicyUrl),
+          ],
+        ),
+        const SizedBox(height: 14),
         Row(
           children: [
             const Expanded(child: Divider()),
@@ -243,6 +261,29 @@ class _GoogleSignInButtonState extends ConsumerState<GoogleSignInButton> {
         ),
         const SizedBox(height: 18),
       ],
+    );
+  }
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink(this.label, this.url);
+
+  final String label;
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Launchers.url(context, url),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11.5,
+          color: AppColors.forestDark,
+          fontWeight: FontWeight.w700,
+          decoration: TextDecoration.underline,
+        ),
+      ),
     );
   }
 }

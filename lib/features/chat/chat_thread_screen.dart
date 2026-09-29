@@ -9,10 +9,12 @@ import '../../core/theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
+import '../../data/moderation_repository.dart';
 import '../../models/engagement.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
+import '../widgets/moderation.dart';
 
 /// One conversation. New messages are picked up by polling with the `after`
 /// parameter the API already supports, so only the delta is transferred.
@@ -36,6 +38,8 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
   Timer? _poll;
   bool _loading = true;
   bool _sending = false;
+  bool _blockedByMe = false;
+  bool _blockedMe = false;
   String? _error;
 
   @override
@@ -79,6 +83,8 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
       setState(() {
         _messages = thread.messages;
         _partner = thread.otherUser;
+        _blockedByMe = thread.blockedByMe;
+        _blockedMe = thread.blockedMe;
         _loading = false;
         _error = null;
       });
@@ -160,6 +166,32 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
     }
   }
 
+  Future<void> _onMenu(String action) async {
+    final partner = _partner;
+    if (partner == null) return;
+    switch (action) {
+      case 'report':
+        await Moderation.report(
+          context,
+          ref,
+          target: ReportTarget.chat,
+          targetId: widget.conversationId,
+          what: 'this conversation',
+        );
+      case 'block':
+        final blocked = await Moderation.block(
+          context,
+          ref,
+          userId: partner.id,
+          name: partner.name,
+        );
+        if (blocked && mounted) setState(() => _blockedByMe = true);
+      case 'unblock':
+        await Moderation.unblock(context, ref, userId: partner.id, name: partner.name);
+        if (mounted) setState(() => _blockedByMe = false);
+    }
+  }
+
   void _jumpToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scroll.hasClients) return;
@@ -176,6 +208,7 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
     final me = ref.watch(currentUserProvider);
     final name = _partner?.name ?? widget.title ?? 'Chat';
     final disabled = _partner != null && !_partner!.chatEnabled;
+    final blocked = _blockedByMe || _blockedMe;
 
     return Scaffold(
       appBar: AppBar(
@@ -207,6 +240,31 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
             ],
           ),
         ),
+        actions: [
+          if (_partner != null)
+            PopupMenuButton<String>(
+              tooltip: 'More',
+              onSelected: _onMenu,
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'report',
+                  child: ListTile(
+                    leading: Icon(Icons.flag_outlined),
+                    title: Text('Report'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: _blockedByMe ? 'unblock' : 'block',
+                  child: ListTile(
+                    leading: const Icon(Icons.block_rounded, color: AppColors.red),
+                    title: Text(_blockedByMe ? 'Unblock' : 'Block'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -253,7 +311,20 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
                             },
                           ),
           ),
-          if (disabled)
+          if (blocked)
+            Container(
+              width: double.infinity,
+              color: AppColors.bg,
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                _blockedByMe
+                    ? 'You blocked this person. Unblock them from the menu to send messages.'
+                    : 'You cannot reply to this conversation.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            )
+          else if (disabled)
             Container(
               width: double.infinity,
               color: AppColors.bg,

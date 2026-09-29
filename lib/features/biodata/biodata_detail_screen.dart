@@ -17,7 +17,9 @@ import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import '../../data/moderation_repository.dart';
 import '../home/widgets/home_header.dart';
+import '../widgets/moderation.dart';
 
 /// Shows a teaser until the viewer has access, then the full record, both
 /// drawn like the site's biodata page: the paywall card, then the printed
@@ -57,8 +59,14 @@ class BiodataDetailScreen extends ConsumerWidget {
                     message: '$error',
                     onRetry: () => ref.invalidate(biodataDetailProvider(id)),
                   ),
-                  data: (data) =>
+                  data: (data) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
                       data.hasAccess ? _FullView(data: data) : _LockedView(data: data),
+                      const SizedBox(height: 12),
+                      ReportLink(target: ReportTarget.biodata, targetId: id, what: 'biodata'),
+                    ],
+                  ),
                 ),
               ),
             ),

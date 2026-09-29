@@ -74,14 +74,4 @@ class CatalogRepository {
     );
     return parseList(body, Upazila.fromJson);
   }
-
-  Future<List<DiseaseDepartment>> diseaseDepartments() async {
-    final body = await _api.get('/api/disease-departments', cacheTtl: CacheTtl.reference);
-    return parseList(body, DiseaseDepartment.fromJson);
-  }
-
-  Future<List<Organization>> organizations() async {
-    final body = await _api.get('/api/organizations', cacheTtl: CacheTtl.reference);
-    return parseList(body, Organization.fromJson);
-  }
 }

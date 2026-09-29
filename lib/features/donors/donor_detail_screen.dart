@@ -13,8 +13,10 @@ import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
+import '../../data/moderation_repository.dart';
 import '../widgets/detail_parts.dart';
 import '../widgets/reviews_section.dart';
+import '../widgets/moderation.dart';
 
 final _donorLikersProvider = FutureProvider.autoDispose.family<List<String>, String>(
   (ref, id) => ref.watch(donorRepositoryProvider).likerNames(id),
@@ -258,6 +260,8 @@ class _ContentState extends ConsumerState<_Content> {
         ],
         const SizedBox(height: 16),
         ReviewsSection(targetType: 'donor', targetId: d.id),
+        const SizedBox(height: 8),
+        ReportLink(target: ReportTarget.donor, targetId: d.id, what: 'donor'),
       ],
     );
   }

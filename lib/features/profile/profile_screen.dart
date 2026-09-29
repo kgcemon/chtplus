@@ -264,8 +264,6 @@ class _ProfileCard extends ConsumerWidget {
             onTap: () => go(Routes.myBiodata),
           ),
           divider,
-          _Row(icon: '🗓️', text: 'My serials', button: 'Serials', onTap: () => go(Routes.myAppointments)),
-          divider,
           _Row(icon: '💬', text: 'Chat', button: 'Inbox', onTap: () => go(Routes.chat)),
           divider,
           _Row(

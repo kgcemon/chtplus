@@ -53,14 +53,6 @@ final upazilasByDistrictNameProvider =
   return ref.watch(upazilasProvider(match.id).future);
 });
 
-final diseaseDepartmentsProvider = FutureProvider<List<DiseaseDepartment>>(
-  (ref) => ref.watch(catalogRepositoryProvider).diseaseDepartments(),
-);
-
-final organizationsProvider = FutureProvider<List<Organization>>(
-  (ref) => ref.watch(catalogRepositoryProvider).organizations(),
-);
-
 final bannersProvider = FutureProvider<List<BannerItem>>(
   (ref) => ref.watch(catalogRepositoryProvider).banners(),
 );

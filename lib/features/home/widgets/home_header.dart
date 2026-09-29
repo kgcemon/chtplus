@@ -83,7 +83,7 @@ class _HeaderParts {
     final signedIn = ref.watch(isSignedInProvider);
     final unreadChats = ref.watch(chatUnreadCountProvider).valueOrNull ?? 0;
     final unreadNotifications = ref.watch(unreadNotificationCountProvider);
-    // Pages pushed over the tabs (Doctors, …) get a back button where the
+    // Pages pushed over the tabs (Settings, …) get a back button where the
     // tabs have the menu.
     final canPop = Navigator.of(context).canPop();
 

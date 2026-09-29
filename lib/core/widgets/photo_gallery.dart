@@ -6,8 +6,8 @@ import '../config.dart';
 import '../theme.dart';
 import 'app_network_image.dart';
 
-/// Swipeable header gallery with page dots, used on service, listing, biodata
-/// and doctor detail screens. Tapping opens the full-screen viewer.
+/// Swipeable header gallery with page dots, used on the service, listing and
+/// biodata detail screens. Tapping opens the full-screen viewer.
 class PhotoCarousel extends StatefulWidget {
   const PhotoCarousel({
     super.key,

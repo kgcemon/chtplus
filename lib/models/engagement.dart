@@ -180,16 +180,27 @@ class ChatPartner {
 }
 
 class ChatThread {
-  const ChatThread({this.otherUser, this.messages = const []});
+  const ChatThread({
+    this.otherUser,
+    this.messages = const [],
+    this.blockedByMe = false,
+    this.blockedMe = false,
+  });
 
   final ChatPartner? otherUser;
   final List<ChatMessage> messages;
+
+  /// Either side of a block stops the conversation in both directions.
+  final bool blockedByMe;
+  final bool blockedMe;
 
   factory ChatThread.fromJson(Map<String, dynamic> json) {
     final other = json.mapOrNull('otherUser');
     return ChatThread(
       otherUser: other == null ? null : ChatPartner.fromJson(other),
       messages: json.mapList('messages').map(ChatMessage.fromJson).toList(),
+      blockedByMe: json.flag('blockedByMe'),
+      blockedMe: json.flag('blockedMe'),
     );
   }
 }

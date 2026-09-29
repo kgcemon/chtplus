@@ -12,10 +12,6 @@ import 'features/biodata/my_biodata_screen.dart';
 import 'features/chat/chat_inbox_screen.dart';
 import 'features/chat/chat_thread_screen.dart';
 import 'features/coins/coins_screen.dart';
-import 'features/doctors/booking_screen.dart';
-import 'features/doctors/doctor_detail_screen.dart';
-import 'features/doctors/doctor_list_screen.dart';
-import 'features/doctors/my_appointments_screen.dart';
 import 'features/donors/donor_detail_screen.dart';
 import 'features/donors/donor_form_screen.dart';
 import 'features/donors/donor_list_screen.dart';
@@ -36,6 +32,7 @@ import 'features/services/service_detail_screen.dart';
 import 'features/services/service_form_screen.dart';
 import 'features/services/service_list_screen.dart';
 import 'features/settings/about_screen.dart';
+import 'features/settings/blocked_users_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'providers/auth_provider.dart';
@@ -54,7 +51,6 @@ class Routes {
   static const forgotPassword = '/forgot-password';
   static const onboarding = '/onboarding';
 
-  static const doctors = '/doctors';
   static const profile = '/profile';
   static const chat = '/chat';
   static const notifications = '/notifications';
@@ -66,7 +62,7 @@ class Routes {
   static const myServices = '/my-services';
   static const myListings = '/my-listings';
   static const myBiodata = '/my-biodata';
-  static const myAppointments = '/my-appointments';
+  static const blockedUsers = '/settings/blocked';
 }
 
 /// Exposed so a notification tap can tell whether the navigator exists yet —
@@ -108,7 +104,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         Routes.myServices,
         Routes.myListings,
         Routes.myBiodata,
-        Routes.myAppointments,
+        Routes.blockedUsers,
         Routes.onboarding,
       };
       final needsAuth = guarded.any((path) => location.startsWith(path));
@@ -238,32 +234,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             DonorDetailScreen(id: state.pathParameters['id']!),
       ),
 
-      // --- Doctors ----------------------------------------------------------
-      GoRoute(
-        path: Routes.doctors,
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const DoctorListScreen(),
-      ),
-      GoRoute(
-        path: '/doctors/:id',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) =>
-            DoctorDetailScreen(id: state.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/doctors/:id/book/:chamberId',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => BookingScreen(
-          doctorId: state.pathParameters['id']!,
-          chamberId: state.pathParameters['chamberId']!,
-        ),
-      ),
-      GoRoute(
-        path: Routes.myAppointments,
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const MyAppointmentsScreen(),
-      ),
-
       // --- Marketplace ------------------------------------------------------
       GoRoute(
         path: '/marketplace/sell',
@@ -356,6 +326,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.settings,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: Routes.blockedUsers,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BlockedUsersScreen(),
       ),
       GoRoute(
         path: Routes.about,

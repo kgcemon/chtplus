@@ -8,6 +8,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
+import '../../data/moderation_repository.dart';
 import '../../models/public_profile.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
@@ -15,6 +16,7 @@ import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../widgets/cards.dart';
+import '../widgets/moderation.dart';
 import '../home/widgets/home_header.dart';
 
 class PublicProfileScreen extends ConsumerWidget {
@@ -439,6 +441,29 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
   Widget build(BuildContext context) {
     final following =
         ref.watch(isFollowingProvider(widget.profile.id)).valueOrNull ?? false;
+    final blocked = ref.watch(isBlockedProvider(widget.profile.id)).valueOrNull ?? false;
+
+    if (blocked) {
+      return Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'You have blocked this user.',
+              style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+            ),
+          ),
+          OutlinedButton(
+            onPressed: () => Moderation.unblock(
+              context,
+              ref,
+              userId: widget.profile.id,
+              name: widget.profile.name,
+            ),
+            child: const Text('Unblock'),
+          ),
+        ],
+      );
+    }
 
     return Row(
       children: [
@@ -467,6 +492,47 @@ class _ActionRowState extends ConsumerState<_ActionRow> {
             ),
             style: OutlinedButton.styleFrom(minimumSize: const Size(0, 44)),
           ),
+        ),
+        const SizedBox(width: 4),
+        PopupMenuButton<String>(
+          tooltip: 'More',
+          icon: const Icon(Icons.more_vert_rounded),
+          onSelected: (value) {
+            if (value == 'report') {
+              Moderation.report(
+                context,
+                ref,
+                target: ReportTarget.user,
+                targetId: widget.profile.id,
+                what: widget.profile.name,
+              );
+            } else if (value == 'block') {
+              Moderation.block(
+                context,
+                ref,
+                userId: widget.profile.id,
+                name: widget.profile.name,
+              );
+            }
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(
+              value: 'report',
+              child: ListTile(
+                leading: Icon(Icons.flag_outlined),
+                title: Text('Report user'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'block',
+              child: ListTile(
+                leading: Icon(Icons.block_rounded, color: AppColors.red),
+                title: Text('Block user'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -6,8 +6,8 @@ import '../theme.dart';
 import '../utils/formatters.dart';
 import 'app_network_image.dart';
 
-/// Round profile picture with an initials fallback, used everywhere a user,
-/// doctor or donor is shown.
+/// Round profile picture with an initials fallback, used everywhere a user or
+/// donor is shown.
 class Avatar extends StatelessWidget {
   const Avatar({
     super.key,
