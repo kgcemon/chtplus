@@ -3,7 +3,13 @@ import '../core/utils/json.dart';
 /// Public client config from `/api/app-config` — values an admin can change in
 /// Admin → Settings, so they are never hardcoded in the app.
 class AppRemoteConfig {
-  const AppRemoteConfig({this.googleClientId, this.oneSignalAppId, this.logoUrl});
+  const AppRemoteConfig({
+    this.googleClientId,
+    this.oneSignalAppId,
+    this.logoUrl,
+    this.showCoinBalance = true,
+    this.coinBuyEnabled = true,
+  });
 
   final String? googleClientId;
   final String? oneSignalAppId;
@@ -11,10 +17,17 @@ class AppRemoteConfig {
   /// The logo uploaded in Admin → Settings, the same one the site's header shows.
   final String? logoUrl;
 
+  /// Admin → Settings switches for the coin system; both default to on, as on
+  /// the site.
+  final bool showCoinBalance;
+  final bool coinBuyEnabled;
+
   factory AppRemoteConfig.fromJson(Map<String, dynamic> json) => AppRemoteConfig(
         googleClientId: json.strOrNull('googleClientId'),
         oneSignalAppId: json.strOrNull('oneSignalAppId'),
         logoUrl: json.strOrNull('logoUrl'),
+        showCoinBalance: json['showCoinBalance'] != false,
+        coinBuyEnabled: json['coinBuyEnabled'] != false,
       );
 
   bool get googleEnabled => (googleClientId ?? '').isNotEmpty;

@@ -10,17 +10,16 @@ import '../../core/utils/data_labels.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/launchers.dart';
 import '../../core/widgets/app_network_image.dart';
-import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/dialogs.dart';
 import '../../core/widgets/photo_gallery.dart';
 import '../../models/biodata.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/catalog_providers.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../../data/moderation_repository.dart';
 import '../home/widgets/home_header.dart';
+import '../widgets/form_fields.dart';
 import '../widgets/moderation.dart';
 
 /// Shows a teaser until the viewer has access, then the full record, both
@@ -190,79 +189,150 @@ class _LockedView extends ConsumerStatefulWidget {
 
 class _LockedViewState extends ConsumerState<_LockedView> {
   bool _busy = false;
+  String? _error;
 
-  Future<void> _unlock({String? packageId}) async {
-    if (!ref.read(isSignedInProvider)) {
-      context.push(Routes.login);
+  /// The package picked in the dropdown; the first one to start with.
+  String? _packageId;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncPackage();
+  }
+
+  @override
+  void didUpdateWidget(covariant _LockedView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncPackage();
+  }
+
+  void _syncPackage() {
+    final packages = widget.data.packages;
+    if (packages.isEmpty) {
+      _packageId = null;
+    } else if (!packages.any((p) => p.id == _packageId)) {
+      _packageId = packages.first.id;
+    }
+  }
+
+  BiodataPackage? get _selectedPackage {
+    for (final p in widget.data.packages) {
+      if (p.id == _packageId) return p;
+    }
+    return null;
+  }
+
+  Future<void> _unlock() async {
+    final data = widget.data;
+    final selected = _selectedPackage;
+    if (!data.walletAvailable && selected != null && data.coinBalance < selected.coinCost) {
+      await _showCoinPopup(selected.coinCost);
       return;
     }
-    setState(() => _busy = true);
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       await ref.read(biodataRepositoryProvider).unlock(
-            widget.data.biodata.id,
-            packageId: packageId,
+            data.biodata.id,
+            packageId: data.walletAvailable ? null : selected?.id,
           );
-      ref.invalidate(biodataDetailProvider(widget.data.biodata.id));
+      ref.invalidate(biodataDetailProvider(data.biodata.id));
       ref.invalidate(coinBalanceProvider);
-      if (mounted) AppSnackbar.success(context, 'Biodata unlocked.');
     } on ApiException catch (error) {
       if (!mounted) return;
       if (error.code == 'insufficient_coins') {
-        AppSnackbar.error(context, 'Not enough coins. Top up to unlock.');
-        context.push(Routes.coins);
-      } else if (error.code == 'package_required') {
-        AppSnackbar.show(context, 'Choose a package to unlock this biodata.');
+        await _showCoinPopup(selected?.coinCost ?? 0);
       } else {
-        AppSnackbar.error(context, error.message);
+        setState(() => _error = 'Could not unlock, please try again');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _choosePackage() async {
-    final packages = widget.data.packages;
-    if (packages.isEmpty) {
-      AppSnackbar.show(context, 'No unlock packages are available right now.');
-      return;
-    }
-    final chosen = await AppDialogs.sheet<BiodataPackage>(
-      context,
-      child: _PackageSheet(
-        packages: packages,
-        coinBalance: widget.data.coinBalance,
+  /// "You don’t have enough coins" (`.coin-popup`).
+  Future<void> _showCoinPopup(int cost) async {
+    final config = ref.read(appRemoteConfigProvider).valueOrNull;
+    final showBalance = config?.showCoinBalance ?? true;
+    final canBuy = config?.coinBuyEnabled ?? true;
+    final balance = widget.data.coinBalance;
+
+    final buy = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 24, 22, 18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('🪙', style: TextStyle(fontSize: 32)),
+              const SizedBox(height: 6),
+              const Text(
+                'You don’t have enough coins',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Text.rich(
+                TextSpan(
+                  style: const TextStyle(fontSize: 13.5, height: 1.5, color: AppColors.textSecondary),
+                  children: [
+                    const TextSpan(text: 'To buy this package you need '),
+                    TextSpan(
+                      text: '$cost coins',
+                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.text),
+                    ),
+                    if (showBalance) ...[
+                      const TextSpan(text: ' — you currently have '),
+                      TextSpan(
+                        text: '$balance coins',
+                        style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.text),
+                      ),
+                    ],
+                    TextSpan(text: canBuy ? '. Add coins to continue.' : '. Please try again later.'),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  if (canBuy)
+                    FilledButton(
+                      onPressed: () => Navigator.pop(dialog, true),
+                      child: const Text('🪙 Buy coins'),
+                    ),
+                  OutlinedButton(
+                    onPressed: () => Navigator.pop(dialog, false),
+                    child: Text(canBuy ? 'Cancel' : 'Close'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
-    if (chosen != null) await _unlock(packageId: chosen.id);
+    if (buy == true && mounted) context.push(Routes.coins);
   }
 
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
     final b = data.biodata;
-    final sub = [
-      dataLabel(b.gender),
-      b.area ?? '',
-      if (b.age != null) 'Age ${b.age}',
-    ].where((e) => e.isNotEmpty).join(' · ');
+    final selected = _selectedPackage;
+    final showBalance = ref.watch(appRemoteConfigProvider).valueOrNull?.showCoinBalance ?? true;
+    final sub = '${dataLabel(b.gender)} · ${b.area ?? ''} · Age ${b.age ?? ''}';
 
-    final button = data.loginRequired
-        ? FilledButton(
-            onPressed: () => context.push(Routes.login),
-            style: _paywallButton,
-            child: const Text('Log in / Sign up'),
-          )
-        : data.walletAvailable
-            ? FilledButton(
-                onPressed: _busy ? null : () => _unlock(),
-                style: _paywallButton,
-                child: Text(_busy ? 'Unlocking...' : 'Unlock with quota'),
-              )
-            : FilledButton(
-                onPressed: _busy || data.packages.isEmpty ? null : _choosePackage,
-                style: _paywallButton,
-                child: Text(_busy ? 'Unlocking...' : '🪙 Choose a package to unlock'),
-              );
+    const note = TextStyle(fontSize: 13, height: 1.55, color: AppColors.textSecondary);
+    const balanceStyle = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600);
 
     return _Document(
       child: Padding(
@@ -273,7 +343,7 @@ class _LockedViewState extends ConsumerState<_LockedView> {
             Center(child: _Photo(biodata: b, thumbs: false)),
             const SizedBox(height: 16),
             Text(
-              b.profession ?? b.biodataNo ?? 'Biodata',
+              b.profession ?? '',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
@@ -284,6 +354,7 @@ class _LockedViewState extends ConsumerState<_LockedView> {
               style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
+            // `.biodata-paywall-box`
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -302,34 +373,104 @@ class _LockedViewState extends ConsumerState<_LockedView> {
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    data.walletAvailable
-                        ? 'You have unused quota (${data.walletRemaining} biodata left) — you can unlock this biodata for free.'
-                        : data.packages.isNotEmpty
-                            ? 'To see the full information of this biodata (address, profession, family details, expectations), you need to buy a package.'
-                            : 'No subscription packages have been added yet.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      height: 1.55,
-                      color: AppColors.textSecondary,
+                  if (data.walletAvailable)
+                    Text.rich(
+                      TextSpan(
+                        style: note,
+                        children: [
+                          const TextSpan(text: 'You have unused quota ('),
+                          TextSpan(
+                            text: '${data.walletRemaining} biodata',
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const TextSpan(text: ' left) — you can unlock this biodata for free.'),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                  else if (data.packages.isNotEmpty) ...[
+                    const Text(
+                      'To see the full information of this biodata (address, profession, family details, expectations), you need to buy a package:',
+                      textAlign: TextAlign.center,
+                      style: note,
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    AppDropdown(
+                      value: _packageId,
+                      options: [for (final p in data.packages) p.id],
+                      labelBuilder: (id) {
+                        final p = data.packages.firstWhere((p) => p.id == id);
+                        return '${p.name} — ${p.biodataCount} biodata, 🪙${p.coinCost}';
+                      },
+                      onChanged: (id) => setState(() => _packageId = id),
+                    ),
+                    if (selected != null) ...[
+                      const SizedBox(height: 10),
+                      Text.rich(
+                        TextSpan(
+                          style: balanceStyle.copyWith(fontWeight: FontWeight.w500),
+                          children: [
+                            const TextSpan(text: 'This package gives you '),
+                            TextSpan(
+                              text: '${selected.biodataCount} biodata',
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            const TextSpan(
+                              text: ' unlocks — once unlocked, you can view it as many times as you like.',
+                            ),
+                          ],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ] else
+                    const Text(
+                      'No subscription packages have been added yet.',
+                      textAlign: TextAlign.center,
+                      style: note,
+                    ),
                   const SizedBox(height: 12),
-                  Text(
-                    data.loginRequired
-                        ? 'Please log in first to view the biodata.'
-                        : 'Your current balance: 🪙 ${data.coinBalance} coins',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  button,
-                  if (!data.loginRequired) ...[
-                    const SizedBox(height: 6),
-                    TextButton(
-                      onPressed: () => context.push(Routes.coins),
-                      child: const Text('🪙 Buy coins'),
+                  if (data.loginRequired) ...[
+                    const Text(
+                      'Please log in first to view the biodata.',
+                      textAlign: TextAlign.center,
+                      style: balanceStyle,
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () => context.push(Routes.login),
+                      style: _paywallButton,
+                      child: const Text('Log in / Sign up'),
+                    ),
+                  ] else ...[
+                    if (showBalance) ...[
+                      Text(
+                        'Your current balance: 🪙 ${data.coinBalance} coins',
+                        textAlign: TextAlign.center,
+                        style: balanceStyle,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    FilledButton(
+                      onPressed: _busy || (!data.walletAvailable && selected == null) ? null : _unlock,
+                      style: _paywallButton,
+                      child: Text(
+                        _busy
+                            ? 'Unlocking...'
+                            : data.walletAvailable
+                                ? 'Unlock with quota'
+                                : selected != null
+                                    ? '🪙 ${selected.coinCost} coins to unlock'
+                                    : 'Unlock',
+                      ),
+                    ),
+                  ],
+                  if (_error != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12.5, color: AppColors.red),
                     ),
                   ],
                 ],
@@ -348,153 +489,6 @@ class _LockedViewState extends ConsumerState<_LockedView> {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
   );
 }
-
-class _PackageSheet extends StatefulWidget {
-  const _PackageSheet({required this.packages, required this.coinBalance});
-
-  final List<BiodataPackage> packages;
-  final int coinBalance;
-
-  @override
-  State<_PackageSheet> createState() => _PackageSheetState();
-}
-
-class _PackageSheetState extends State<_PackageSheet> {
-  String? _selectedId;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SheetHeader(
-              title: 'Unlock packages',
-              subtitle: 'Each package opens a number of biodata, permanently.',
-              trailing: Padding(
-                padding: const EdgeInsets.only(right: 14),
-                child: Text(
-                  '🪙 ${widget.coinBalance}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.forestDark,
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-              child: Column(
-                children: [
-                  for (final package in widget.packages)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: InkWell(
-                        onTap: () => setState(() => _selectedId = package.id),
-                        borderRadius: BorderRadius.circular(AppRadius.card),
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: _selectedId == package.id
-                                ? AppColors.forestLight
-                                : AppColors.surface,
-                            border: Border.all(
-                              color: _selectedId == package.id
-                                  ? AppColors.forest
-                                  : AppColors.border,
-                              width: _selectedId == package.id ? 1.6 : 1,
-                            ),
-                            borderRadius: BorderRadius.circular(AppRadius.card),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _selectedId == package.id
-                                    ? Icons.radio_button_checked
-                                    : Icons.radio_button_off,
-                                size: 20,
-                                color: _selectedId == package.id
-                                    ? AppColors.forest
-                                    : AppColors.border,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      package.name,
-                                      style: const TextStyle(
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      'Opens ${package.biodataCount} biodata',
-                                      style: const TextStyle(
-                                        fontSize: 12.5,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    '🪙 ${package.coinCost}',
-                                    style: TextStyle(
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w800,
-                                      color: widget.coinBalance >= package.coinCost
-                                          ? AppColors.forestDark
-                                          : AppColors.red,
-                                    ),
-                                  ),
-                                  if (widget.coinBalance < package.coinCost)
-                                    const Text(
-                                      'Not enough',
-                                      style: TextStyle(
-                                        fontSize: 10.5,
-                                        color: AppColors.red,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 6),
-                  FilledButton(
-                    onPressed: _selectedId == null
-                        ? null
-                        : () => Navigator.of(context).pop(
-                              widget.packages
-                                  .firstWhere((p) => p.id == _selectedId),
-                            ),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 50),
-                    ),
-                    child: const Text('Unlock now'),
-                  ),
-                  const SizedBox(height: 14),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- Unlocked ---------------------------------------------------------------
 
 /// The full record as the site's printed "Marriage Biodata" document.
 class _FullView extends StatelessWidget {

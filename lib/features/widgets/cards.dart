@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -531,6 +533,9 @@ class _CountPill extends StatelessWidget {
   }
 }
 
+/// A biodata tile as the site's `BiodataCard` draws it: a square cover that
+/// stays blurred with a 🔒 on it (the full photo only opens after unlocking),
+/// the biodata number and gender, then profession, marital status and area.
 class BiodataCard extends StatelessWidget {
   const BiodataCard({super.key, required this.biodata});
 
@@ -538,122 +543,122 @@ class BiodataCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final photo = biodata.photos.isEmpty ? null : biodata.photos.first;
+    final cover = biodata.photos.isEmpty ? null : biodata.photos.first;
 
     return AppCard(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.all(10),
       onTap: () => context.push('/biodata/view/${biodata.id}'),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Stack(
-            children: [
-              AppNetworkImage(
-                url: photo,
-                width: double.infinity,
-                height: 138,
-                placeholderIcon: Icons.person_outline,
+          // `.biodata-cover-wrap`
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (cover == null)
+                    Container(
+                      color: AppColors.forestLight,
+                      alignment: Alignment.center,
+                      child: Text(
+                        biodata.isBride ? '👰' : '🤵',
+                        style: const TextStyle(fontSize: 28),
+                      ),
+                    )
+                  else ...[
+                    // `.biodata-cover-blurred`: blur(6px) scale(1.08)
+                    Transform.scale(
+                      scale: 1.08,
+                      child: ImageFiltered(
+                        imageFilter: ui.ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+                        child: AppNetworkImage(url: cover),
+                      ),
+                    ),
+                    // `.biodata-cover-lock`
+                    Center(
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          color: Color(0x73000000),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Text('🔒', style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                  ],
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: SaveButton(targetType: 'biodata', targetId: biodata.id),
+                  ),
+                ],
               ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: StatusPill(
-                  label: dataLabel(biodata.gender),
-                  color: biodata.isBride ? const Color(0xFFC2185B) : AppColors.forest,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // `.info-card-top`: number pill and gender badge
+          Row(
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.forestLight,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    biodata.biodataNo ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                  ),
                 ),
               ),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: SaveButton(targetType: 'biodata', targetId: biodata.id),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 9, 10, 11),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  biodata.biodataNo ?? 'Biodata',
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: AppColors.forestLight,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  dataLabel(biodata.gender),
                   style: const TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.forestDark,
                   ),
                 ),
-                const SizedBox(height: 5),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    if (biodata.age != null)
-                      _Chip(label: '${biodata.age} yrs'),
-                    if ((biodata.height ?? '').isNotEmpty)
-                      _Chip(label: biodata.height!),
-                    if ((biodata.maritalStatus ?? '').isNotEmpty)
-                      _Chip(label: dataLabel(biodata.maritalStatus)),
-                  ],
-                ),
-                if ((biodata.profession ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    biodata.profession!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ],
-                if ((biodata.area ?? '').isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.place_outlined,
-                          size: 12, color: AppColors.textSecondary),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          biodata.area!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11.5,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            biodata.profession ?? '',
+            style: const TextStyle(fontSize: 12, height: 1.3, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          // `.info-card-meta`
+          Wrap(
+            spacing: 7,
+            runSpacing: 3,
+            children: [
+              Text(
+                '💍 ${dataLabel(biodata.maritalStatus)}',
+                style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+              ),
+              Text(
+                '📍 ${biodata.area ?? ''}',
+                style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+              ),
+            ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.forestLight,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
-          color: AppColors.forestDark,
-        ),
       ),
     );
   }
