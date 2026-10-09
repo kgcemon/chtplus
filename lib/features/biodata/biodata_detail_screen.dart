@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -107,10 +109,27 @@ class _Photo extends StatelessWidget {
   final Biodata biodata;
   final bool thumbs;
 
+  static bool _isUrl(String p) => p.startsWith('http://') || p.startsWith('https://');
+
+  /// A photo URL, or a local file path while previewing an unsent biodata.
+  static Widget _image(String source, double width, double height, {BorderRadius? radius}) {
+    if (_isUrl(source)) {
+      return AppNetworkImage(url: source, width: width, height: height, borderRadius: radius);
+    }
+    return ClipRRect(
+      borderRadius: radius ?? BorderRadius.zero,
+      child: Image.file(File(source), width: width, height: height, fit: BoxFit.cover),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final photos = biodata.photos;
-    void open(int i) => FullScreenGallery.open(context, photos: photos, initialIndex: i);
+    void open(int i) {
+      if (photos.every(_isUrl)) {
+        FullScreenGallery.open(context, photos: photos, initialIndex: i);
+      }
+    }
 
     return SizedBox(
       width: 160,
@@ -135,7 +154,7 @@ class _Photo extends StatelessWidget {
                   )
                 : GestureDetector(
                     onTap: () => open(0),
-                    child: AppNetworkImage(url: photos.first, width: 160, height: 190),
+                    child: _image(photos.first, 160, 190),
                   ),
           ),
           if (thumbs && photos.length > 1) ...[
@@ -147,12 +166,7 @@ class _Photo extends StatelessWidget {
                 for (var i = 1; i < photos.length; i++)
                   GestureDetector(
                     onTap: () => open(i),
-                    child: AppNetworkImage(
-                      url: photos[i],
-                      width: 48,
-                      height: 48,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    child: _image(photos[i], 48, 48, radius: BorderRadius.circular(8)),
                   ),
               ],
             ),
@@ -488,9 +502,36 @@ class _FullView extends StatelessWidget {
 
   final BiodataDetail data;
 
+  @override
+  Widget build(BuildContext context) => BiodataDocumentView(biodata: data.biodata);
+}
+
+/// The site's `BiodataDocument`: the printed "Marriage Biodata" layout. The
+/// biodata form shows it as its preview step ([preview]: no contact block),
+/// with [t] / [dl] following the form's English | বাংলা choice.
+class BiodataDocumentView extends StatelessWidget {
+  const BiodataDocumentView({
+    super.key,
+    required this.biodata,
+    this.preview = false,
+    this.t = _same,
+    this.dl = dataLabel,
+  });
+
+  final Biodata biodata;
+  final bool preview;
+
+  /// Translates a label.
+  final String Function(String) t;
+
+  /// Labels a stored (Bengali) value.
+  final String Function(String?) dl;
+
+  static String _same(String text) => text;
+
   String _passed(String? year, String? institution, String? group) =>
-      'Passed (${year ?? '-'})'
-      '${(group ?? '').isEmpty ? '' : ', ${dataLabel(group)}'}'
+      '${t('Passed')} (${(year ?? '').isEmpty ? '-' : year})'
+      '${(group ?? '').isEmpty ? '' : ', ${dl(group)}'}'
       '${(institution ?? '').isEmpty ? '' : ', $institution'}';
 
   String _degree(String? institution, String? department, String? year) =>
@@ -498,7 +539,7 @@ class _FullView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final b = data.biodata;
+    final b = biodata;
     final siblings = b.siblings ?? const [];
 
     return _Document(
@@ -527,9 +568,9 @@ class _FullView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Marriage Biodata',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+                Text(
+                  t('Marriage Biodata'),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -567,7 +608,7 @@ class _FullView extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  [dataLabel(b.gender), b.area ?? ''].where((e) => e.isNotEmpty).join(' · '),
+                  [dl(b.gender), b.area ?? ''].where((e) => e.isNotEmpty).join(' · '),
                   style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 14),
@@ -576,13 +617,13 @@ class _FullView extends StatelessWidget {
                 _Fields(
                   columns: 2,
                   rows: [
-                    ('Age', b.age?.toString()),
-                    ('Date of birth', Fmt.date(b.dateOfBirth)),
-                    ('Skin tone', dataLabel(b.skinTone)),
-                    ('Height', b.height),
-                    ('Blood group', b.bloodGroup),
-                    ('Religion', dataLabel(b.religion)),
-                    ('Marital status', dataLabel(b.maritalStatus)),
+                    (t('Age'), b.age?.toString()),
+                    (t('Date of birth'), Fmt.date(b.dateOfBirth)),
+                    (t('Skin tone'), dl(b.skinTone)),
+                    (t('Height'), b.height),
+                    (t('Blood group'), b.bloodGroup),
+                    (t('Religion'), dl(b.religion)),
+                    (t('Marital status'), dl(b.maritalStatus)),
                   ],
                 ),
               ],
@@ -590,122 +631,124 @@ class _FullView extends StatelessWidget {
           ),
           _Section(
             icon: '📍',
-            title: 'Address',
+            title: t('Address'),
             rows: [
-              ('Permanent district', b.permanentDistrict),
-              ('Permanent thana', b.permanentUpazila),
-              ('Current district', b.currentDistrict),
-              ('Current thana', b.currentUpazila),
-              ('Current address', b.currentAddress),
+              (t('Permanent district'), b.permanentDistrict),
+              (t('Permanent thana'), b.permanentUpazila),
+              (t('Current district'), b.currentDistrict),
+              (t('Current thana'), b.currentUpazila),
+              (t('Current address'), b.currentAddress),
             ],
           ),
           _Section(
             icon: '🎓',
-            title: 'Education',
+            title: t('Education'),
             rows: [
-              ('Medium of education', dataLabel(b.educationMedium)),
-              ('SSC', b.sscPassed ? _passed(b.sscYear, b.sscInstitution, b.sscGroup) : 'No'),
-              ('HSC', b.hscPassed ? _passed(b.hscYear, b.hscInstitution, b.hscGroup) : 'No'),
+              (t('Medium of education'), dl(b.educationMedium)),
+              (t('SSC'), b.sscPassed ? _passed(b.sscYear, b.sscInstitution, b.sscGroup) : t('No')),
+              (t('HSC'), b.hscPassed ? _passed(b.hscYear, b.hscInstitution, b.hscGroup) : t('No')),
               (
-                'Graduate',
+                t('Graduate'),
                 b.graduationPassed
                     ? _degree(b.institutionName, b.graduationDepartment, b.graduationYear)
-                    : 'No',
+                    : t('No'),
               ),
               if (b.graduationPassed)
                 (
-                  'Post-graduate',
+                  t('Post-graduate'),
                   b.postgraduationPassed
                       ? _degree(
                           b.postgraduationInstitution,
                           b.postgraduationDepartment,
                           b.postgraduationYear,
                         )
-                      : 'No',
+                      : t('No'),
                 ),
-              if ((b.otherEducation ?? '').isNotEmpty) ('Other education', b.otherEducation),
+              if ((b.otherEducation ?? '').isNotEmpty) (t('Other education'), b.otherEducation),
             ],
           ),
           _Section(
             icon: '🕌',
-            title: 'Personal Habits & Information',
+            title: t('Personal Habits & Information'),
             rows: [
-              ('Prays five times a day?', dataLabel(b.prayerHabit)),
-              ('Any mental or physical illness?', b.healthCondition),
+              (t('Prays five times a day?'), dl(b.prayerHabit)),
+              (t('Any mental or physical illness?'), b.healthCondition),
               if (!b.isBride) ...[
                 (
-                  'After marriage, will you let your wife study?',
-                  dataLabel(b.wifeEducationPermission),
+                  t('After marriage, will you let your wife study?'),
+                  dl(b.wifeEducationPermission),
                 ),
-                ('Will you let your wife work?', dataLabel(b.wifeJobPermission)),
-                ('Where will you keep your wife after marriage?', b.whereWifeWillLive),
+                (t('Will you let your wife work?'), dl(b.wifeJobPermission)),
+                (t('Where will you keep your wife after marriage?'), b.whereWifeWillLive),
               ],
-              ('Brief information about yourself', b.aboutSelf),
+              (t('Brief information about yourself'), b.aboutSelf),
             ],
           ),
           _Section(
             icon: '💼',
-            title: 'Professional Information',
+            title: t('Professional Information'),
             rows: [
-              ('Profession type', dataLabel(b.professionType)),
-              ('Profession', b.profession),
+              (t('Profession type'), dl(b.professionType)),
+              (t('Profession'), b.profession),
             ],
           ),
           _Section(
             icon: '👪',
-            title: 'Family Information',
+            title: t('Family Information'),
             rows: [
-              ('Father’s name', b.fatherName),
-              ('Father’s profession', dataLabel(b.fatherProfession)),
-              ('Mother’s name', b.motherName),
-              ('Mother’s profession', dataLabel(b.motherProfession)),
-              ('Brothers', b.brotherCount?.toString()),
-              ('Sisters', b.sisterCount?.toString()),
+              (t('Father’s name'), b.fatherName),
+              (t('Father’s profession'), dl(b.fatherProfession)),
+              (t('Mother’s name'), b.motherName),
+              (t('Mother’s profession'), dl(b.motherProfession)),
+              (t('Brothers'), b.brotherCount?.toString()),
+              (t('Sisters'), b.sisterCount?.toString()),
               if (siblings.isNotEmpty)
                 (
-                  'Siblings',
+                  t('Siblings'),
                   [
                     for (var i = 0; i < siblings.length; i++)
                       '${i + 1}. ${[
                         siblings[i].name.isEmpty ? '-' : siblings[i].name,
-                        dataLabel(siblings[i].relation),
-                        '${dataLabel(siblings[i].profession)}'
+                        dl(siblings[i].relation),
+                        '${dl(siblings[i].profession)}'
                             '${siblings[i].organization.isEmpty ? '' : ' (${siblings[i].organization})'}',
-                        dataLabel(siblings[i].maritalStatus),
+                        dl(siblings[i].maritalStatus),
                       ].where((e) => e.isNotEmpty).join(' · ')}',
                   ].join('\n'),
                 )
               else if ((b.siblingsProfession ?? '').isNotEmpty)
-                ('Siblings’ professions', b.siblingsProfession),
+                (t('Siblings’ professions'), b.siblingsProfession),
             ],
           ),
           _Section(
             icon: '💍',
-            title: 'Expected Life Partner',
+            title: t('Expected Life Partner'),
+            last: preview,
             rows: [
-              ('Maximum age', b.expectedMaxAge),
-              ('Skin tone', dataLabel(b.expectedSkinTone)),
-              ('Minimum height', b.expectedMinHeight),
-              ('Education', b.expectedEducation),
-              ('Profession', b.expectedProfession),
-              ('Area', b.expectedDistrict),
-              ('Marital status', dataLabel(b.expectedMaritalStatus)),
-              ('Economic condition', b.expectedEconomicCondition),
-              ('Family condition', b.expectedFamilyCondition),
-              ('Expected qualities', b.expectedQualities),
+              (t('Maximum age'), b.expectedMaxAge),
+              (t('Skin tone'), dl(b.expectedSkinTone)),
+              (t('Minimum height'), b.expectedMinHeight),
+              (t('Education'), b.expectedEducation),
+              (t('Profession'), b.expectedProfession),
+              (t('Area'), b.expectedDistrict),
+              (t('Marital status'), dl(b.expectedMaritalStatus)),
+              (t('Economic condition'), b.expectedEconomicCondition),
+              (t('Family condition'), b.expectedFamilyCondition),
+              (t('Expected qualities'), b.expectedQualities),
               if ((b.otherRequirements ?? '').isNotEmpty)
-                ('Other requirements', b.otherRequirements),
+                (t('Other requirements'), b.otherRequirements),
             ],
           ),
-          _Section(
+          if (!preview)
+            _Section(
             icon: '📞',
-            title: 'Contact',
+            title: t('Contact'),
             last: true,
             rows: [
-              ('Guardian', dataLabel(b.guardianRelation)),
-              ('Guardian’s phone', b.guardianPhone),
-              if ((b.mobileNumber ?? '').isNotEmpty) ('Mobile', b.mobileNumber),
-              if ((b.email ?? '').isNotEmpty) ('Email', b.email),
+              (t('Guardian'), dl(b.guardianRelation)),
+              (t('Guardian’s phone'), b.guardianPhone),
+              if ((b.mobileNumber ?? '').isNotEmpty) (t('Mobile'), b.mobileNumber),
+              if ((b.email ?? '').isNotEmpty) (t('Email'), b.email),
             ],
             footer: (b.guardianPhone ?? '').isEmpty
                 ? null

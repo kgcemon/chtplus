@@ -18,12 +18,37 @@ class FormRowField extends StatelessWidget {
     required this.child,
     this.required = false,
     this.hint,
+    this.errorText,
+    this.labelSize = 13,
   });
 
   final String label;
   final Widget child;
   final bool required;
   final String? hint;
+
+  /// Shown in red under the field, like the site's `.field-error`.
+  final String? errorText;
+
+  final double labelSize;
+
+  // `.field-invalid`: the control gets a red outline.
+  static Widget _invalid(BuildContext context, Widget child) {
+    final theme = Theme.of(context);
+    final red = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.field),
+      borderSide: const BorderSide(color: AppColors.red, width: 1.4),
+    );
+    return Theme(
+      data: theme.copyWith(
+        inputDecorationTheme: theme.inputDecorationTheme.copyWith(
+          border: red,
+          enabledBorder: red,
+        ),
+      ),
+      child: child,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,24 +57,32 @@ class FormRowField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-              ),
-              if (required)
-                const Text(' *', style: TextStyle(fontSize: 13, color: AppColors.red)),
-            ],
+          Text.rich(
+            TextSpan(
+              text: label,
+              children: [
+                if (required)
+                  const TextSpan(text: ' *', style: TextStyle(color: AppColors.red)),
+              ],
+            ),
+            style: TextStyle(fontSize: labelSize, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
-          child,
+          if (errorText == null) child else _invalid(context, child),
           if (hint != null)
             Padding(
               padding: const EdgeInsets.only(top: 5),
               child: Text(
                 hint!,
                 style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+              ),
+            ),
+          if (errorText != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Text(
+                errorText!,
+                style: const TextStyle(fontSize: 12, color: AppColors.red),
               ),
             ),
         ],
@@ -86,6 +119,9 @@ class AppDropdown extends StatelessWidget {
     final safeValue = value != null && options.contains(value) ? value : null;
 
     return DropdownButtonFormField<String>(
+      // `initialValue` is only read once; keying on it lets a value set from
+      // outside (a default arriving late, a reset) show up.
+      key: ValueKey(safeValue),
       initialValue: safeValue,
       isExpanded: true,
       hint: Text(hint, style: const TextStyle(fontSize: 14)),
@@ -121,12 +157,18 @@ class DistrictPicker extends ConsumerWidget {
     required this.onChanged,
     this.includeEmpty = true,
     this.emptyLabel = 'All districts',
+    this.hint = 'Choose a district',
+    this.bengaliLabels = false,
   });
 
   final String? value;
   final ValueChanged<String?> onChanged;
   final bool includeEmpty;
   final String emptyLabel;
+  final String hint;
+
+  /// Show only the Bengali name, as the site's biodata form does.
+  final bool bengaliLabels;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -139,9 +181,11 @@ class DistrictPicker extends ConsumerWidget {
         options: items.map((d) => d.filterValue).toList(),
         includeEmpty: includeEmpty,
         emptyLabel: emptyLabel,
-        hint: 'Choose a district',
-        labelBuilder: (option) =>
-            items.firstWhere((d) => d.filterValue == option).label,
+        hint: hint,
+        labelBuilder: (option) {
+          final d = items.firstWhere((d) => d.filterValue == option);
+          return bengaliLabels ? d.filterValue : d.label;
+        },
         onChanged: onChanged,
       ),
     );
@@ -157,6 +201,9 @@ class UpazilaPicker extends ConsumerWidget {
     required this.onChanged,
     this.includeEmpty = true,
     this.emptyLabel = 'All areas',
+    this.hint = 'Choose an area',
+    this.placeholder = 'Choose a district first',
+    this.bengaliLabels = false,
   });
 
   final String? districtName;
@@ -164,11 +211,14 @@ class UpazilaPicker extends ConsumerWidget {
   final ValueChanged<String?> onChanged;
   final bool includeEmpty;
   final String emptyLabel;
+  final String hint;
+  final String placeholder;
+  final bool bengaliLabels;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (districtName == null || districtName!.isEmpty) {
-      return const _FieldPlaceholder(label: 'Choose a district first');
+      return _FieldPlaceholder(label: placeholder);
     }
     final upazilas = ref.watch(upazilasByDistrictNameProvider(districtName));
     return upazilas.when(
@@ -179,9 +229,11 @@ class UpazilaPicker extends ConsumerWidget {
         options: items.map((u) => u.filterValue).toList(),
         includeEmpty: includeEmpty,
         emptyLabel: emptyLabel,
-        hint: 'Choose an area',
-        labelBuilder: (option) =>
-            items.firstWhere((u) => u.filterValue == option).label,
+        hint: hint,
+        labelBuilder: (option) {
+          final u = items.firstWhere((u) => u.filterValue == option);
+          return bengaliLabels ? u.filterValue : u.label;
+        },
         onChanged: onChanged,
       ),
     );
@@ -251,7 +303,10 @@ class DateField extends StatelessWidget {
         height: 48,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          border: Border.all(color: AppColors.border),
+          border: Border.all(
+            color: Theme.of(context).inputDecorationTheme.enabledBorder?.borderSide.color ??
+                AppColors.border,
+          ),
           borderRadius: BorderRadius.circular(AppRadius.field),
           color: AppColors.surface,
         ),

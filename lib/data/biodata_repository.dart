@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:dio/dio.dart';
 
@@ -8,13 +9,19 @@ import '../core/api/response_cache.dart';
 import '../core/utils/json.dart';
 import '../models/biodata.dart';
 
-/// Everything the biodata wizard collects. Field names match the form keys
-/// `lib/biodataFields.js` parses on the server.
+/// Everything the biodata wizard collects, with the same starting values,
+/// yes/no answers and required-field checks as the site's `BiodataWizard`.
+/// Field names match the form keys `lib/biodataFields.js` parses on the server.
 class BiodataDraft {
   BiodataDraft();
 
-  String biodataType = BiodataOptions.types.first;
-  String maritalStatus = BiodataOptions.maritalStatuses.first;
+  static const yes = 'হ্যাঁ';
+  static const no = 'না';
+  static const any = 'যেকোনো';
+
+  String biodataType = 'পাত্রের বায়োডাটা';
+  String maritalStatus = 'অবিবাহিত';
+  // Filled with খাগড়াছড়ি by the wizard once the district list is in, like the site.
   String permanentDistrict = '';
   String permanentUpazila = '';
   String currentDistrict = '';
@@ -24,24 +31,25 @@ class BiodataDraft {
   String skinTone = '';
   String height = '';
   String bloodGroup = '';
-  String professionType = BiodataOptions.professionTypes.first;
+  String professionType = 'চাকরি';
   String profession = '';
-  String religion = '';
+  String religion = 'ইসলাম';
 
-  String educationMedium = '';
-  bool sscPassed = false;
+  String educationMedium = 'জেনারেল';
+  // '' (not answered yet), হ্যাঁ or না.
+  String sscPassed = '';
   String sscYear = '';
   String sscInstitution = '';
   String sscGroup = '';
-  bool hscPassed = false;
+  String hscPassed = '';
   String hscYear = '';
   String hscInstitution = '';
   String hscGroup = '';
-  bool graduationPassed = false;
+  String graduationPassed = '';
   String institutionName = '';
   String graduationDepartment = '';
   String graduationYear = '';
-  bool postgraduationPassed = false;
+  String postgraduationPassed = '';
   String postgraduationInstitution = '';
   String postgraduationDepartment = '';
   String postgraduationYear = '';
@@ -52,41 +60,94 @@ class BiodataDraft {
   String motherProfession = '';
   List<Sibling> siblings = [];
 
-  String prayerHabit = '';
-  String healthCondition = '';
+  String prayerHabit = 'নিয়মিত চেষ্টা করি';
+  // '' (not answered yet), হ্যাঁ or না; the details are sent as healthCondition.
+  String healthIssue = '';
+  String healthDetails = '';
   String aboutSelf = '';
 
-  String wifeEducationPermission = '';
-  String wifeJobPermission = '';
+  String wifeEducationPermission = yes;
+  String wifeJobPermission = 'আলোচনা সাপেক্ষে';
   String whereWifeWillLive = '';
 
   String expectedMaxAge = '';
-  String expectedSkinTone = '';
-  String expectedMinHeight = '';
+  String expectedSkinTone = any;
+  String expectedMinHeight = any;
   String expectedEducation = '';
-  String expectedProfession = '';
   String expectedDistrict = '';
-  String expectedMaritalStatus = '';
+  String expectedMaritalStatus = any;
+  String expectedProfession = '';
   String expectedEconomicCondition = '';
   String expectedFamilyCondition = '';
   String expectedQualities = '';
 
   String noteToAdmin = '';
-  String guardianPhone = '';
-  String guardianRelation = BiodataOptions.guardianRelations.first;
-  String email = '';
   bool policyAgreed = false;
+  String guardianPhone = '';
+  String guardianRelation = 'পিতা';
+  String email = '';
 
-  List<String> newPhotoPaths = [];
-  List<String> keepPhotoUrls = [];
+  /// The four photo slots (`.wizard-photo-slot`): an uploaded photo's URL, a
+  /// newly picked file's path, or null for an empty slot. Slot 0 is the main photo.
+  List<String?> photoSlots = [null, null, null, null];
 
-  bool get isGroom => biodataType != 'পাত্রীর বায়োডাটা';
+  bool get isGroom => biodataType == 'পাত্রের বায়োডাটা';
+  bool get isMuslim => religion == 'ইসলাম';
 
-  /// Pre-fills the wizard from an existing record, for editing.
+  static bool isUrl(String value) => value.startsWith('http://') || value.startsWith('https://');
+
+  List<String> get keepPhotoUrls => [for (final p in photoSlots) if (p != null && isUrl(p)) p];
+  List<String> get newPhotoPaths => [for (final p in photoSlots) if (p != null && !isUrl(p)) p];
+
+  // Each education level only counts when the one below it was passed.
+  bool get sscDone => sscPassed == yes;
+  bool get hscDone => sscDone && hscPassed == yes;
+  bool get graduationDone => hscDone && graduationPassed == yes;
+  bool get postgraduationDone => graduationDone && postgraduationPassed == yes;
+
+  /// The four yes/no education questions are asked one after another;
+  /// changing an answer clears the ones below it so they are asked again.
+  void setEducationAnswer(String field, String value) {
+    switch (field) {
+      case 'sscPassed':
+        sscPassed = value;
+        hscPassed = graduationPassed = postgraduationPassed = '';
+      case 'hscPassed':
+        hscPassed = value;
+        graduationPassed = postgraduationPassed = '';
+      case 'graduationPassed':
+        graduationPassed = value;
+        postgraduationPassed = '';
+      case 'postgraduationPassed':
+        postgraduationPassed = value;
+    }
+  }
+
+  static Sibling blankSibling() => const Sibling(
+        relation: 'বড় ভাই',
+        profession: 'শিক্ষার্থী',
+        maritalStatus: 'অবিবাহিত',
+      );
+
+  void setSiblingCount(int count) {
+    final n = count < 0 ? 0 : (count > BiodataOptions.maxSiblings ? BiodataOptions.maxSiblings : count);
+    final next = siblings.take(n).toList();
+    while (next.length < n) {
+      next.add(blankSibling());
+    }
+    siblings = next;
+  }
+
+  /// Pre-fills the wizard from an existing record, for editing
+  /// (`mapInitialDataToForm` on the site).
   factory BiodataDraft.fromBiodata(Biodata source) {
+    String yn(bool value) => value ? yes : no;
+    final health = source.healthCondition ?? '';
+    final prayer = source.prayerHabit ?? '';
+
     final draft = BiodataDraft()
       ..biodataType = source.isBride ? 'পাত্রীর বায়োডাটা' : 'পাত্রের বায়োডাটা'
-      ..maritalStatus = source.maritalStatus ?? BiodataOptions.maritalStatuses.first
+      ..maritalStatus = source.maritalStatus ?? 'অবিবাহিত'
       ..permanentDistrict = source.permanentDistrict ?? ''
       ..permanentUpazila = source.permanentUpazila ?? ''
       ..currentDistrict = source.currentDistrict ?? ''
@@ -98,23 +159,23 @@ class BiodataDraft {
       ..skinTone = source.skinTone ?? ''
       ..height = source.height ?? ''
       ..bloodGroup = source.bloodGroup ?? ''
-      ..professionType = source.professionType ?? BiodataOptions.professionTypes.first
+      ..professionType = source.professionType ?? 'চাকরি'
       ..profession = source.profession ?? ''
-      ..religion = source.religion ?? ''
-      ..educationMedium = source.educationMedium ?? ''
-      ..sscPassed = source.sscPassed
+      ..religion = source.religion ?? 'ইসলাম'
+      ..educationMedium = source.educationMedium ?? 'জেনারেল'
+      ..sscPassed = yn(source.sscPassed)
       ..sscYear = source.sscYear ?? ''
       ..sscInstitution = source.sscInstitution ?? ''
       ..sscGroup = source.sscGroup ?? ''
-      ..hscPassed = source.hscPassed
+      ..hscPassed = yn(source.hscPassed)
       ..hscYear = source.hscYear ?? ''
       ..hscInstitution = source.hscInstitution ?? ''
       ..hscGroup = source.hscGroup ?? ''
-      ..graduationPassed = source.graduationPassed
+      ..graduationPassed = yn(source.graduationPassed)
       ..institutionName = source.institutionName ?? ''
       ..graduationDepartment = source.graduationDepartment ?? ''
       ..graduationYear = source.graduationYear ?? ''
-      ..postgraduationPassed = source.postgraduationPassed
+      ..postgraduationPassed = yn(source.postgraduationPassed)
       ..postgraduationInstitution = source.postgraduationInstitution ?? ''
       ..postgraduationDepartment = source.postgraduationDepartment ?? ''
       ..postgraduationYear = source.postgraduationYear ?? ''
@@ -122,32 +183,69 @@ class BiodataDraft {
       ..fatherProfession = source.fatherProfession ?? ''
       ..motherName = source.motherName ?? ''
       ..motherProfession = source.motherProfession ?? ''
-      ..siblings = List.of(source.siblings ?? const [])
-      ..prayerHabit = source.prayerHabit ?? ''
-      ..healthCondition = source.healthCondition ?? ''
+      ..siblings = _siblingsFrom(source)
+      // the older "নিয়মিত নয়" answer becomes the new wording
+      ..prayerHabit = prayer.isEmpty || prayer == 'নিয়মিত নয়' ? 'নিয়মিত চেষ্টা করি' : prayer
+      ..healthIssue = health.isEmpty ? '' : (health == no ? no : yes)
+      ..healthDetails = health.isNotEmpty && health != no ? health : ''
       ..aboutSelf = source.aboutSelf ?? ''
-      ..wifeEducationPermission = source.wifeEducationPermission ?? ''
-      ..wifeJobPermission = source.wifeJobPermission ?? ''
+      ..wifeEducationPermission = _or(source.wifeEducationPermission, yes)
+      ..wifeJobPermission = _or(source.wifeJobPermission, 'আলোচনা সাপেক্ষে')
       ..whereWifeWillLive = source.whereWifeWillLive ?? ''
       ..expectedMaxAge = source.expectedMaxAge ?? ''
-      ..expectedSkinTone = source.expectedSkinTone ?? ''
-      ..expectedMinHeight = source.expectedMinHeight ?? ''
+      ..expectedSkinTone = _or(source.expectedSkinTone, any)
+      ..expectedMinHeight = _or(source.expectedMinHeight, any)
       ..expectedEducation = source.expectedEducation ?? ''
+      ..expectedDistrict = source.expectedDistrict == any ? '' : (source.expectedDistrict ?? '')
+      ..expectedMaritalStatus = _or(source.expectedMaritalStatus, any)
       ..expectedProfession = source.expectedProfession ?? ''
-      ..expectedDistrict = source.expectedDistrict ?? ''
-      ..expectedMaritalStatus = source.expectedMaritalStatus ?? ''
       ..expectedEconomicCondition = source.expectedEconomicCondition ?? ''
       ..expectedFamilyCondition = source.expectedFamilyCondition ?? ''
       ..expectedQualities = source.expectedQualities ?? ''
       ..guardianPhone = source.guardianPhone ?? ''
-      ..guardianRelation = source.guardianRelation ?? BiodataOptions.guardianRelations.first
+      ..guardianRelation = _or(source.guardianRelation, 'পিতা')
       ..email = source.email ?? ''
-      ..keepPhotoUrls = List.of(source.photos)
+      ..photoSlots = [for (var i = 0; i < 4; i++) i < source.photos.length ? source.photos[i] : null]
       // An existing record was only saved because the policy was agreed to;
       // the server re-checks the flag on every edit.
       ..policyAgreed = true;
     return draft;
   }
+
+  static String _or(String? value, String fallback) =>
+      (value ?? '').isEmpty ? fallback : value!;
+
+  // Siblings saved before the per-sibling cards existed only have counts, so
+  // open the editor with that many empty cards to fill in.
+  static List<Sibling> _siblingsFrom(Biodata source) {
+    final saved = source.siblings;
+    if (saved != null) {
+      // a plain "ভাই"/"বোন" from an older save has no elder/younger; pick the elder one
+      const fix = {'ভাই': 'বড় ভাই', 'বোন': 'বড় বোন'};
+      return [
+        for (final s in saved)
+          Sibling(
+            name: s.name,
+            relation: fix[s.relation] ?? (s.relation.isEmpty ? 'বড় ভাই' : s.relation),
+            profession: s.profession.isEmpty ? 'শিক্ষার্থী' : s.profession,
+            organization: s.organization,
+            maritalStatus: s.maritalStatus.isEmpty ? 'অবিবাহিত' : s.maritalStatus,
+          ),
+      ];
+    }
+    const limit = BiodataOptions.maxSiblings;
+    final brothers = min(limit, max(0, source.brotherCount ?? 0));
+    final sisters = min(limit - brothers, max(0, source.sisterCount ?? 0));
+    return [
+      for (var i = 0; i < brothers; i++) blankSibling(),
+      for (var i = 0; i < sisters; i++)
+        const Sibling(relation: 'বড় বোন', profession: 'শিক্ষার্থী', maritalStatus: 'অবিবাহিত'),
+    ];
+  }
+
+  /// What the server stores for the illness question.
+  String get healthCondition =>
+      healthIssue == yes ? healthDetails.trim() : (healthIssue == no ? no : '');
 
   Map<String, String> toFormFields() => {
         'biodataType': biodataType,
@@ -165,19 +263,19 @@ class BiodataDraft {
         'profession': profession,
         'religion': religion,
         'educationMedium': educationMedium,
-        'sscPassed': sscPassed ? 'হ্যাঁ' : 'না',
+        'sscPassed': sscPassed,
         'sscYear': sscYear,
         'sscInstitution': sscInstitution,
         'sscGroup': sscGroup,
-        'hscPassed': hscPassed ? 'হ্যাঁ' : 'না',
+        'hscPassed': hscPassed,
         'hscYear': hscYear,
         'hscInstitution': hscInstitution,
         'hscGroup': hscGroup,
-        'graduationPassed': graduationPassed ? 'হ্যাঁ' : 'না',
+        'graduationPassed': graduationPassed,
         'institutionName': institutionName,
         'graduationDepartment': graduationDepartment,
         'graduationYear': graduationYear,
-        'postgraduationPassed': postgraduationPassed ? 'হ্যাঁ' : 'না',
+        'postgraduationPassed': postgraduationPassed,
         'postgraduationInstitution': postgraduationInstitution,
         'postgraduationDepartment': postgraduationDepartment,
         'postgraduationYear': postgraduationYear,
@@ -197,7 +295,7 @@ class BiodataDraft {
         'expectedMinHeight': expectedMinHeight,
         'expectedEducation': expectedEducation,
         'expectedProfession': expectedProfession,
-        'expectedDistrict': expectedDistrict,
+        'expectedDistrict': expectedDistrict.isEmpty ? any : expectedDistrict,
         'expectedMaritalStatus': expectedMaritalStatus,
         'expectedEconomicCondition': expectedEconomicCondition,
         'expectedFamilyCondition': expectedFamilyCondition,
@@ -210,43 +308,162 @@ class BiodataDraft {
         'policyAgreed': policyAgreed ? 'on' : '',
       };
 
-  /// Mirrors the server's own required-field check so the wizard can point at
-  /// the offending step before making a round trip.
-  String? validate() {
-    final missing = biodataType.isEmpty ||
-        maritalStatus.isEmpty ||
-        permanentDistrict.isEmpty ||
-        currentDistrict.isEmpty ||
-        currentAddress.isEmpty ||
-        dateOfBirth.isEmpty ||
-        skinTone.isEmpty ||
-        height.isEmpty ||
-        bloodGroup.isEmpty ||
-        professionType.isEmpty ||
-        profession.isEmpty ||
-        fatherName.isEmpty ||
-        fatherProfession.isEmpty ||
-        motherName.isEmpty ||
-        motherProfession.isEmpty ||
-        aboutSelf.isEmpty ||
-        guardianPhone.isEmpty ||
-        guardianRelation.isEmpty;
-    if (missing) return 'Fill in all required (*) fields';
-    if (!policyAgreed) return 'You must agree to the policy to continue';
-    if (!BiodataOptions.isValidMobile(guardianPhone)) {
-      return 'Enter a valid Bangladeshi mobile number';
-    }
-    if (graduationPassed &&
-        (institutionName.isEmpty || graduationDepartment.isEmpty || graduationYear.isEmpty)) {
-      return 'Fill in the graduation institution, department/degree and passing year';
-    }
-    if (postgraduationPassed &&
-        (postgraduationInstitution.isEmpty ||
-            postgraduationDepartment.isEmpty ||
-            postgraduationYear.isEmpty)) {
-      return 'Fill in the post-graduation institution, department/degree and passing year';
+  /// The first empty required field of a wizard step (0–2) in on-screen order,
+  /// as (field id, message), or null when the step is complete — the site's
+  /// `checkPage1/2/3`.
+  (String, String)? problemInStep(int step) {
+    switch (step) {
+      case 0:
+        if (dateOfBirth.isEmpty) return ('dateOfBirth', 'Enter the date of birth');
+        if (skinTone.isEmpty) return ('skinTone', 'Select skin tone');
+        if (height.isEmpty) return ('height', 'Select height');
+        if (bloodGroup.isEmpty) return ('bloodGroup', 'Select blood group');
+        if (profession.trim().isEmpty) return ('profession', 'Enter the profession details');
+        if (currentAddress.trim().isEmpty) {
+          return ('currentAddress', 'Enter the current address');
+        }
+      case 1:
+        if (sscPassed.isEmpty) {
+          return ('sscPassed', 'Answer whether you passed SSC/equivalent');
+        }
+        if (sscDone) {
+          if (sscYear.isEmpty) return ('sscYear', 'Select the passing year');
+          if (sscGroup.isEmpty) return ('sscGroup', 'Select the group');
+          if (sscInstitution.trim().isEmpty) return ('sscInstitution', 'Enter the institute name');
+          if (hscPassed.isEmpty) {
+            return ('hscPassed', 'Answer whether you passed HSC/equivalent');
+          }
+        }
+        if (hscDone) {
+          if (hscYear.isEmpty) return ('hscYear', 'Select the passing year');
+          if (hscGroup.isEmpty) return ('hscGroup', 'Select the group');
+          if (hscInstitution.trim().isEmpty) return ('hscInstitution', 'Enter the institute name');
+          if (graduationPassed.isEmpty) {
+            return ('graduationPassed', 'Answer whether you passed graduation/equivalent');
+          }
+        }
+        if (graduationDone) {
+          if (graduationYear.isEmpty) return ('graduationYear', 'Select the passing year');
+          if (graduationDepartment.trim().isEmpty) {
+            return ('graduationDepartment', 'Enter the department / degree name');
+          }
+          if (institutionName.trim().isEmpty) return ('institutionName', 'Enter the institute name');
+          if (postgraduationPassed.isEmpty) {
+            return (
+              'postgraduationPassed',
+              'Answer whether you passed post-graduation/equivalent',
+            );
+          }
+        }
+        if (postgraduationDone) {
+          if (postgraduationYear.isEmpty) return ('postgraduationYear', 'Select the passing year');
+          if (postgraduationDepartment.trim().isEmpty) {
+            return ('postgraduationDepartment', 'Enter the department / degree name');
+          }
+          if (postgraduationInstitution.trim().isEmpty) {
+            return ('postgraduationInstitution', 'Enter the institute name');
+          }
+        }
+        if (fatherName.trim().isEmpty) return ('fatherName', 'Enter the father’s name');
+        if (fatherProfession.trim().isEmpty) {
+          return ('fatherProfession', 'Enter the father’s profession');
+        }
+        if (motherName.trim().isEmpty) return ('motherName', 'Enter the mother’s name');
+        if (motherProfession.trim().isEmpty) {
+          return ('motherProfession', 'Enter the mother’s profession');
+        }
+        if (healthIssue.isEmpty) {
+          return ('healthIssue', 'Answer whether you have any mental or physical illness');
+        }
+        if (healthIssue == yes && healthDetails.trim().isEmpty) {
+          return ('healthDetails', 'Give details of the illness');
+        }
+        if (aboutSelf.trim().isEmpty) return ('aboutSelf', 'Write something about yourself');
+      case 2:
+        if (!policyAgreed) return ('policyAgreed', 'You must agree to the policy to continue');
+        if (!BiodataOptions.isValidMobile(guardianPhone)) {
+          return ('guardianPhone', 'Enter the guardian’s valid mobile number');
+        }
+        if (guardianRelation.isEmpty) {
+          return ('guardianRelation', 'Select the relationship with the guardian');
+        }
     }
     return null;
+  }
+
+  /// The biodata as it will appear once published, so the preview step can
+  /// show it in the same document layout (`previewData()` on the site).
+  Biodata toPreview({required String biodataNo}) {
+    final dob = DateTime.tryParse(dateOfBirth);
+    int? age;
+    if (dob != null) {
+      final now = DateTime.now();
+      age = now.year - dob.year;
+      if (now.month < dob.month || (now.month == dob.month && now.day < dob.day)) age -= 1;
+      if (age < 0) age = 0;
+    }
+    return Biodata(
+      id: '',
+      biodataNo: biodataNo,
+      gender: isGroom ? 'পুরুষ' : 'মহিলা',
+      maritalStatus: maritalStatus,
+      permanentDistrict: permanentDistrict,
+      permanentUpazila: permanentUpazila,
+      currentDistrict: currentDistrict,
+      currentUpazila: currentUpazila,
+      currentAddress: currentAddress,
+      dateOfBirth: dob,
+      age: age,
+      religion: religion,
+      skinTone: skinTone,
+      height: height,
+      bloodGroup: bloodGroup,
+      professionType: professionType,
+      profession: profession,
+      area: [currentUpazila, permanentUpazila, currentDistrict]
+          .firstWhere((e) => e.isNotEmpty, orElse: () => ''),
+      educationMedium: educationMedium,
+      sscPassed: sscDone,
+      sscYear: sscYear,
+      sscInstitution: sscInstitution,
+      sscGroup: sscGroup,
+      hscPassed: hscDone,
+      hscYear: hscYear,
+      hscInstitution: hscInstitution,
+      hscGroup: hscGroup,
+      graduationPassed: graduationDone,
+      institutionName: institutionName,
+      graduationDepartment: graduationDepartment,
+      graduationYear: graduationYear,
+      postgraduationPassed: postgraduationDone,
+      postgraduationInstitution: postgraduationInstitution,
+      postgraduationDepartment: postgraduationDepartment,
+      postgraduationYear: postgraduationYear,
+      fatherName: fatherName,
+      fatherProfession: fatherProfession,
+      motherName: motherName,
+      motherProfession: motherProfession,
+      siblings: siblings,
+      sisterCount: siblings.where((s) => s.relation.endsWith('বোন')).length,
+      brotherCount: siblings.where((s) => s.relation.endsWith('ভাই')).length,
+      prayerHabit: isMuslim ? prayerHabit : null,
+      healthCondition: healthIssue.isEmpty ? null : healthCondition,
+      aboutSelf: aboutSelf,
+      wifeEducationPermission: isGroom ? wifeEducationPermission : null,
+      wifeJobPermission: isGroom ? wifeJobPermission : null,
+      whereWifeWillLive: isGroom ? whereWifeWillLive : null,
+      expectedMaxAge: expectedMaxAge,
+      expectedSkinTone: expectedSkinTone,
+      expectedMinHeight: expectedMinHeight,
+      expectedEducation: expectedEducation,
+      expectedProfession: expectedProfession,
+      expectedDistrict: expectedDistrict.isEmpty ? any : expectedDistrict,
+      expectedMaritalStatus: expectedMaritalStatus,
+      expectedEconomicCondition: expectedEconomicCondition,
+      expectedFamilyCondition: expectedFamilyCondition,
+      expectedQualities: expectedQualities,
+      photos: [for (final p in photoSlots) if (p != null) p],
+    );
   }
 }
 
@@ -256,11 +473,15 @@ class BiodataRepository {
   final ApiClient _api;
 
   /// Public list — admin-verified profiles only, without the contact block.
-  Future<List<Biodata>> list({bool forceRefresh = false}) async {
+  ///
+  /// Always asked of the server: a biodata an admin has just verified must
+  /// show up right away, as it does on the site. The saved copy is only the
+  /// offline fallback.
+  Future<List<Biodata>> list() async {
     final body = await _api.get(
       '/api/biodata',
       cacheTtl: CacheTtl.feed,
-      forceRefresh: forceRefresh,
+      forceRefresh: true,
     );
     return parseList(body, Biodata.fromJson);
   }
