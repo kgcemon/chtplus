@@ -18,6 +18,10 @@ class AppConfig {
   static const String termsUrl = '$apiBase/terms';
   static const String websiteUrl = apiBase;
 
+  /// The app's Play Store page (package `com.chtplus.bd`), sent by "Share app".
+  static const String playStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.chtplus.bd';
+
   /// Shown in the home footer and its "Contact" call to action, matching the
   /// contact block the site renders there.
   static const String supportPhone = '01828820222';

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config.dart';
 import '../../../core/theme.dart';
+import '../../../core/utils/launchers.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../providers/auth_provider.dart';
@@ -77,7 +79,9 @@ class HomeDrawer extends ConsumerWidget {
                     'Log in / Sign up',
                     style: TextStyle(color: AppColors.forestDark, fontWeight: FontWeight.w700),
                   ),
-                )
+                ),
+              if (user == null)
+                const _ShareAppItem()
               else ...[
                 _DrawerItem(
                   onTap: () => go(Routes.profile),
@@ -140,6 +144,7 @@ class HomeDrawer extends ConsumerWidget {
                     ],
                   ),
                 ),
+                const _ShareAppItem(),
                 const Spacer(),
                 _DrawerItem(
                   onTap: () => _signOut(context, ref),
@@ -174,6 +179,28 @@ class HomeDrawer extends ConsumerWidget {
     await GoogleSignInService.instance.signOut();
     await ref.read(authControllerProvider.notifier).signOut();
     router.go(Routes.home);
+  }
+}
+
+/// "Share app": sends the Play Store link through the phone's share sheet.
+class _ShareAppItem extends StatelessWidget {
+  const _ShareAppItem();
+
+  @override
+  Widget build(BuildContext context) {
+    return _DrawerItem(
+      onTap: () => Launchers.share(
+        'Download the ${AppConfig.appName} app:\n${AppConfig.playStoreUrl}',
+        subject: AppConfig.appName,
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.share_rounded, size: 18, color: Colors.white),
+          SizedBox(width: 12),
+          Text('Share app'),
+        ],
+      ),
+    );
   }
 }
 
