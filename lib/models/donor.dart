@@ -18,6 +18,7 @@ class Donor {
     this.userId,
     this.likeCount = 0,
     this.likedByMe = false,
+    this.ownerBlueBadge = false,
     bool? eligible,
   }) : _eligible = eligible;
 
@@ -34,6 +35,7 @@ class Donor {
   final String? userId;
   final int likeCount;
   final bool likedByMe;
+  final bool ownerBlueBadge;
   final bool? _eligible;
 
   factory Donor.fromJson(Map<String, dynamic> json) => Donor(
@@ -50,6 +52,7 @@ class Donor {
         userId: json.strOrNull('userId'),
         likeCount: json.intOr('likeCount'),
         likedByMe: json.flag('likedByMe'),
+        ownerBlueBadge: json.flag('ownerBlueBadge'),
         eligible: json.containsKey('eligible') ? json.flag('eligible') : null,
       );
 
@@ -83,6 +86,7 @@ class Donor {
         userId: userId,
         likeCount: likeCount ?? this.likeCount,
         likedByMe: likedByMe ?? this.likedByMe,
+        ownerBlueBadge: ownerBlueBadge,
         eligible: _eligible,
       );
 }

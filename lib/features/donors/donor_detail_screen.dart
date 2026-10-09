@@ -18,8 +18,9 @@ import '../widgets/detail_parts.dart';
 import '../widgets/reviews_section.dart';
 import '../widgets/moderation.dart';
 
-final _donorLikersProvider = FutureProvider.autoDispose.family<List<String>, String>(
-  (ref, id) => ref.watch(donorRepositoryProvider).likerNames(id),
+final _donorLikersProvider =
+    FutureProvider.autoDispose.family<List<({String name, bool blueBadge})>, String>(
+  (ref, id) => ref.watch(donorRepositoryProvider).likers(id),
 );
 
 /// A donor's details, drawn like the site's donor popup: name with Follow and
@@ -130,6 +131,7 @@ class _ContentState extends ConsumerState<_Content> {
       title: Row(
         children: [
           Flexible(child: Text(d.name)),
+          VerifiedBadge(active: d.ownerBlueBadge, size: 16),
           FollowInline(userId: d.userId),
         ],
       ),
@@ -232,26 +234,32 @@ class _ContentState extends ConsumerState<_Content> {
           likers.when(
             loading: () => const _Note('Loading...'),
             error: (_, __) => const _Note('Could not load'),
-            data: (names) => names.isEmpty
+            data: (likers) => likers.isEmpty
                 ? const _Note('No one has liked this yet')
                 : Wrap(
                     spacing: 6,
                     runSpacing: 6,
                     children: [
-                      for (final name in names)
+                      for (final liker in likers)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFDECEB),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: Text(
-                            '❤️ $name',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.red,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '❤️ ${liker.name}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.red,
+                                ),
+                              ),
+                              VerifiedBadge(active: liker.blueBadge, size: 12),
+                            ],
                           ),
                         ),
                     ],

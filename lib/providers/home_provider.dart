@@ -48,13 +48,12 @@ class HomeFeed {
 }
 
 /// The order of sections on the home screen. A signed-in user who picked
-/// interests during onboarding sees those first.
+/// interests during onboarding sees those first. Blood donors always come last.
 final homeSectionOrderProvider = Provider<List<String>>((ref) {
-  const all = ['services', 'donors', 'marketplace', 'biodata'];
+  const all = ['biodata', 'services', 'marketplace'];
   final interests = ref.watch(currentUserProvider)?.homeInterests ?? const [];
-  if (interests.isEmpty) return all;
   final picked = interests.where(all.contains).toList();
-  return [...picked, ...all.where((s) => !picked.contains(s))];
+  return [...picked, ...all.where((s) => !picked.contains(s)), 'donors'];
 });
 
 final homeFeedProvider = FutureProvider<HomeFeed>((ref) async {

@@ -391,11 +391,18 @@ class DonorCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      donor.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            donor.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        VerifiedBadge(active: donor.ownerBlueBadge),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(

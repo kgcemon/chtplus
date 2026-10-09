@@ -93,9 +93,17 @@ class DonorRepository {
   }
 
   /// Names of the people who sent this donor a love reaction, newest first.
-  Future<List<String>> likerNames(String id) async {
-    final body = await _api.get('/api/donors/$id/likes');
-    return body is List ? body.map((e) => e.toString()).toList() : const [];
+  /// Who loved a donor, newest first, as (name, has blue tick) pairs.
+  Future<List<({String name, bool blueBadge})>> likers(String id) async {
+    final body = await _api.get('/api/donors/$id/likes?withBadge=1');
+    if (body is! List) return const [];
+    return [
+      for (final e in body)
+        if (e is Map<String, dynamic>)
+          (name: e.str('name'), blueBadge: e.flag('blueBadge'))
+        else
+          (name: e.toString(), blueBadge: false),
+    ];
   }
 
   Future<List<String>> likedDonorIds() async {
