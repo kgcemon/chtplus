@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'features/ask/ask_screen.dart';
 import 'features/auth/forgot_password_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
@@ -26,6 +27,7 @@ import 'features/profile/edit_profile_screen.dart';
 import 'features/profile/follow_list_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/profile/public_profile_screen.dart';
+import 'features/referral/refer_screen.dart';
 import 'features/saved/saved_screen.dart';
 import 'features/services/my_services_screen.dart';
 import 'features/services/service_detail_screen.dart';
@@ -36,6 +38,7 @@ import 'features/settings/blocked_users_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'providers/auth_provider.dart';
+import 'providers/core_providers.dart';
 
 class Routes {
   const Routes._();
@@ -56,6 +59,8 @@ class Routes {
   static const notifications = '/notifications';
   static const saved = '/saved';
   static const coins = '/coins';
+  static const refer = '/refer';
+  static const ask = '/ask';
   static const settings = '/settings';
   static const about = '/about';
 
@@ -101,6 +106,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         Routes.notifications,
         Routes.saved,
         Routes.coins,
+        Routes.refer,
         Routes.myServices,
         Routes.myListings,
         Routes.myBiodata,
@@ -190,6 +196,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             RegisterScreen(next: state.uri.queryParameters['next']),
+      ),
+      // A shared Refer & Win link (https://chtplus.xyz/r/CHT7K2XA) opened in
+      // the app: keep the code for sign-up, then show sign-up — or the Refer
+      // page for someone already signed in (a code can't apply to them).
+      GoRoute(
+        path: '/r/:code',
+        redirect: (context, state) async {
+          await ref
+              .read(authRepositoryProvider)
+              .savePendingReferralCode(state.pathParameters['code'] ?? '');
+          return ref.read(authControllerProvider).isSignedIn ? Routes.refer : Routes.register;
+        },
       ),
       GoRoute(
         path: Routes.forgotPassword,
@@ -321,6 +339,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.coins,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const CoinsScreen(),
+      ),
+      GoRoute(
+        path: Routes.ask,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => AskScreen(initialQuery: state.uri.queryParameters['q']),
+      ),
+      GoRoute(
+        path: Routes.refer,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ReferScreen(),
       ),
       GoRoute(
         path: Routes.settings,

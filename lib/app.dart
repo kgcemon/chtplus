@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/app_update.dart';
 import 'core/config.dart';
 import 'core/theme.dart';
+import 'providers/feature_providers.dart';
 import 'providers/push_provider.dart';
 import 'router.dart';
 
@@ -15,9 +17,12 @@ class ChtPlusApp extends ConsumerWidget {
     // Starts push registration once the remote config has loaded; it is a
     // no-op when the admin has not configured OneSignal.
     ref.watch(pushServiceProvider);
+    // Chat 'online' heartbeat (delivery ticks); see chatPresenceProvider.
+    ref.watch(chatPresenceProvider);
 
     return MaterialApp.router(
       title: AppConfig.appName,
+      scaffoldMessengerKey: appMessengerKey,
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       routerConfig: ref.watch(routerProvider),

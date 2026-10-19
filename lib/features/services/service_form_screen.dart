@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_exception.dart';
-import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/dialogs.dart';
 import '../../models/service.dart';
@@ -33,8 +32,10 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final _providerName =
       TextEditingController(text: widget.existing?.providerName ?? '');
+  // The saved text as-is (like the site's edit form), so line breaks and any
+  // HTML formatting survive an edit instead of being flattened to one line.
   late final _description = TextEditingController(
-    text: Fmt.plainText(widget.existing?.description),
+    text: widget.existing?.description ?? '',
   );
   late final _phone = TextEditingController(text: widget.existing?.phone ?? '');
 
@@ -238,7 +239,9 @@ class _ServiceFormScreenState extends ConsumerState<ServiceFormScreen> {
                         children: [
                           TextFormField(
                             controller: _description,
-                            maxLines: 4,
+                            minLines: 4,
+                            maxLines: 12,
+                            keyboardType: TextInputType.multiline,
                             maxLength: 2000,
                             textCapitalization: TextCapitalization.sentences,
                             decoration: const InputDecoration(

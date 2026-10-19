@@ -107,6 +107,8 @@ class Conversation {
     this.lastMessageAt,
     this.lastMessageBody,
     this.unreadCount = 0,
+    this.lastMessageMine = false,
+    this.lastMessageStatus,
   });
 
   final String conversationId;
@@ -118,6 +120,11 @@ class Conversation {
   final String? lastMessageBody;
   final int unreadCount;
 
+  /// Whether the viewer sent the last message, and then its ticks:
+  /// sent · delivered · read.
+  final bool lastMessageMine;
+  final String? lastMessageStatus;
+
   factory Conversation.fromJson(Map<String, dynamic> json) => Conversation(
         conversationId: json.str('conversationId'),
         otherUserId: json.str('otherUserId'),
@@ -127,6 +134,8 @@ class Conversation {
         lastMessageAt: json.date('lastMessageAt'),
         lastMessageBody: json.strOrNull('lastMessageBody'),
         unreadCount: json.intOr('unreadCount'),
+        lastMessageMine: json.flag('lastMessageMine'),
+        lastMessageStatus: json.strOrNull('lastMessageStatus'),
       );
 }
 
@@ -185,6 +194,8 @@ class ChatThread {
     this.messages = const [],
     this.blockedByMe = false,
     this.blockedMe = false,
+    this.deliveredUpTo = 0,
+    this.readUpTo = 0,
   });
 
   final ChatPartner? otherUser;
@@ -194,13 +205,21 @@ class ChatThread {
   final bool blockedByMe;
   final bool blockedMe;
 
+  /// Ticks on the viewer's own messages: ids up to [deliveredUpTo] reached
+  /// the other person (2 ticks), up to [readUpTo] were read (blue).
+  final int deliveredUpTo;
+  final int readUpTo;
+
   factory ChatThread.fromJson(Map<String, dynamic> json) {
     final other = json.mapOrNull('otherUser');
+    final receipts = json.mapOrNull('receipts') ?? const <String, dynamic>{};
     return ChatThread(
       otherUser: other == null ? null : ChatPartner.fromJson(other),
       messages: json.mapList('messages').map(ChatMessage.fromJson).toList(),
       blockedByMe: json.flag('blockedByMe'),
       blockedMe: json.flag('blockedMe'),
+      deliveredUpTo: receipts.intOr('deliveredUpTo'),
+      readUpTo: receipts.intOr('readUpTo'),
     );
   }
 }

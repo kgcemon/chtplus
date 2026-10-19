@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/config.dart';
 import '../../../core/theme.dart';
-import '../../../core/utils/launchers.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/dialogs.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/catalog_providers.dart';
 import '../../../providers/feature_providers.dart';
 import '../../../router.dart';
 import '../../auth/google_signin_service.dart';
+import '../../shell/app_shell.dart';
+import '../../widgets/share_app.dart';
 import 'home_header.dart';
 
 /// The slide-in menu behind the header's ☰ button, matching the website's
@@ -24,6 +25,8 @@ class HomeDrawer extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final coins = ref.watch(coinBalanceProvider).valueOrNull ?? 0;
     final unreadChats = ref.watch(chatUnreadCountProvider).valueOrNull ?? 0;
+    final referralEnabled =
+        ref.watch(appRemoteConfigProvider).valueOrNull?.referralEnabled ?? false;
     final width = MediaQuery.sizeOf(context).width * 0.8;
 
     // Closes the drawer before leaving, so it is not still open on return.
@@ -130,6 +133,11 @@ class HomeDrawer extends ConsumerWidget {
                     style: const TextStyle(color: Color(0xFFFFD166), fontWeight: FontWeight.w700),
                   ),
                 ),
+                if (referralEnabled)
+                  _DrawerItem(
+                    onTap: () => go(Routes.refer),
+                    child: const Text('🎁  Refer & Win'),
+                  ),
                 _DrawerItem(
                   onTap: () => go(Routes.chat),
                   child: Row(
@@ -182,22 +190,23 @@ class HomeDrawer extends ConsumerWidget {
   }
 }
 
-/// "Share app": sends the Play Store link through the phone's share sheet.
-class _ShareAppItem extends StatelessWidget {
+/// "Share": the Play Store link (plus the user's Refer & Win code when
+/// signed in) through the phone's share sheet — see [shareApp].
+class _ShareAppItem extends ConsumerWidget {
   const _ShareAppItem();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return _DrawerItem(
-      onTap: () => Launchers.share(
-        'Download the ${AppConfig.appName} app:\n${AppConfig.playStoreUrl}',
-        subject: AppConfig.appName,
-      ),
+      onTap: () {
+        AppShell.scaffoldKey.currentState?.closeDrawer();
+        shareApp(ref);
+      },
       child: const Row(
         children: [
           Icon(Icons.share_rounded, size: 18, color: Colors.white),
           SizedBox(width: 12),
-          Text('Share app'),
+          Text('Share'),
         ],
       ),
     );

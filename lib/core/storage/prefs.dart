@@ -61,5 +61,11 @@ class PrefKeys {
   static const onboardingSeen = 'onboarding_seen';
   static const welcomePopupSeenAt = 'welcome_popup_seen_at';
   static const chatNoticeSeen = 'chat_notice_seen';
+
+  /// A Refer & Win code from an opened /r/<code> link, used at sign-up.
+  static const pendingReferralCode = 'pending_referral_code';
+
+  /// When the user last said "No thanks" to the Play update prompt.
+  static const updateDeclinedAt = 'update_declined_at';
   static const httpCachePrefix = 'http_cache:';
 }

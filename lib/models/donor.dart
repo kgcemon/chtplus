@@ -90,3 +90,22 @@ class Donor {
         eligible: _eligible,
       );
 }
+
+/// Someone who sent a love reaction (`/api/donors/:id/likes?withBadge=1`).
+/// Older servers send only names, so [id] may be empty — then there is no
+/// profile to open.
+class Liker {
+  const Liker({required this.id, required this.name, this.photoUrl, this.blueBadge = false});
+
+  final String id;
+  final String name;
+  final String? photoUrl;
+  final bool blueBadge;
+
+  factory Liker.fromJson(Map<String, dynamic> json) => Liker(
+        id: json.str('id'),
+        name: json.str('name'),
+        photoUrl: json.strOrNull('photoUrl'),
+        blueBadge: json.flag('blueBadge'),
+      );
+}

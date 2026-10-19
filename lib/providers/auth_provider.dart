@@ -82,6 +82,7 @@ class AuthController extends Notifier<AuthState> {
     required String password,
     String? phone,
     String? area,
+    String? referralCode,
   }) async {
     final result = await ref.read(authRepositoryProvider).register(
           name: name,
@@ -89,6 +90,7 @@ class AuthController extends Notifier<AuthState> {
           password: password,
           phone: phone,
           area: area,
+          referralCode: referralCode,
         );
     state = AuthState(user: result.user, restoring: false);
   }

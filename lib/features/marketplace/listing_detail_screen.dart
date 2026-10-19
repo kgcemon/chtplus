@@ -15,6 +15,7 @@ import '../home/widgets/home_header.dart';
 import '../widgets/cards.dart';
 import '../widgets/detail_parts.dart';
 import '../widgets/moderation.dart';
+import '../widgets/view_count.dart';
 
 /// A product page laid out like the site's listing page on a phone: category
 /// trail, photo gallery, title, poster, meta, price and description, then the
@@ -28,34 +29,38 @@ class ListingDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final listing = ref.watch(listingDetailProvider(id));
 
-    return listing.when(
-      loading: () => const Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            HomeHeader(),
-            SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
-          ],
+    return ViewTracker(
+      type: 'listing',
+      id: id,
+      child: listing.when(
+        loading: () => const Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              HomeHeader(),
+              SliverFillRemaining(child: Center(child: CircularProgressIndicator())),
+            ],
+          ),
         ),
-      ),
-      error: (error, _) => Scaffold(
-        body: CustomScrollView(
-          slivers: [
-            const HomeHeader(),
-            SliverFillRemaining(
-              child: ErrorView(
-                message: '$error',
-                onRetry: () => ref.invalidate(listingDetailProvider(id)),
+        error: (error, _) => Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              const HomeHeader(),
+              SliverFillRemaining(
+                child: ErrorView(
+                  message: '$error',
+                  onRetry: () => ref.invalidate(listingDetailProvider(id)),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-      data: (item) => _Content(
-        listing: item,
-        onRefresh: () async {
-          ref.invalidate(listingDetailProvider(id));
-          await ref.read(listingDetailProvider(id).future);
-        },
+        data: (item) => _Content(
+          listing: item,
+          onRefresh: () async {
+            ref.invalidate(listingDetailProvider(id));
+            await ref.read(listingDetailProvider(id).future);
+          },
+        ),
       ),
     );
   }

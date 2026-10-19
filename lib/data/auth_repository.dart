@@ -31,22 +31,50 @@ class AuthRepository {
     required String password,
     String? phone,
     String? area,
+    String? referralCode,
   }) async {
+    final code = cleanReferralCode(referralCode);
     final body = await _api.post('/api/auth/register', body: {
       'name': name.trim(),
       'email': email.trim().toLowerCase(),
       'password': password,
       if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
       if (area != null && area.trim().isNotEmpty) 'area': area.trim(),
+      if (code.isNotEmpty) 'referralCode': code,
     });
+    await clearPendingReferralCode();
     return _persist(body);
   }
 
-  /// Exchanges a Google ID token for a CHT Plus session.
+  /// Exchanges a Google ID token for a CHT Plus session. A Refer & Win code
+  /// from an opened invite link goes along; the server only uses it when this
+  /// creates a new account.
   Future<AuthResult> googleSignIn(String credential) async {
-    final body = await _api.post('/api/auth/google', body: {'credential': credential});
+    final code = pendingReferralCode();
+    final body = await _api.post('/api/auth/google', body: {
+      'credential': credential,
+      if (code.isNotEmpty) 'referralCode': code,
+    });
+    await clearPendingReferralCode();
     return _persist(body);
   }
+
+  // --- Refer & Win invite code -------------------------------------------
+
+  static String cleanReferralCode(String? value) {
+    final code = (value ?? '').toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    return code.length > 12 ? code.substring(0, 12) : code;
+  }
+
+  String pendingReferralCode() =>
+      cleanReferralCode(Prefs.instance.getString(PrefKeys.pendingReferralCode));
+
+  Future<void> savePendingReferralCode(String code) async {
+    final cleaned = cleanReferralCode(code);
+    if (cleaned.isNotEmpty) await Prefs.instance.setString(PrefKeys.pendingReferralCode, cleaned);
+  }
+
+  Future<void> clearPendingReferralCode() => Prefs.instance.remove(PrefKeys.pendingReferralCode);
 
   /// Always succeeds, whether or not the email is registered — the server
   /// deliberately does not reveal which addresses exist.

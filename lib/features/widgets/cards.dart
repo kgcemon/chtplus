@@ -14,6 +14,7 @@ import '../../models/donor.dart';
 import '../../models/listing.dart';
 import '../../models/service.dart';
 import 'save_button.dart';
+import 'view_count.dart';
 
 /// A provider tile as the site's `ServiceCard` draws it: category chip (and
 /// a Sponsored badge), avatar and name, a two-line description, area, then the
@@ -121,10 +122,18 @@ class ServiceCard extends StatelessWidget {
               const Divider(height: 1, color: AppColors.border),
               // `.info-card-footer { padding-top: 10px }`.
               const SizedBox(height: 10),
-              RatingStars(
-                rating: service.rating,
-                count: service.ratingCount,
-                size: compact ? 12 : 14,
+              Row(
+                children: [
+                  Flexible(
+                    child: RatingStars(
+                      rating: service.rating,
+                      count: service.ratingCount,
+                      size: compact ? 12 : 14,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  ViewCountBadge(type: 'service', id: service.id, fontSize: compact ? 10 : 11.5),
+                ],
               ),
               const SizedBox(height: 6),
               FilledButton(
@@ -254,13 +263,22 @@ class ListingCard extends StatelessWidget {
               const SizedBox(height: 4),
               const Divider(height: 1, color: AppColors.border),
               const SizedBox(height: 6),
-              Text(
-                Fmt.taka(listing.price),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.forestDark,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      Fmt.taka(listing.price),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.forestDark,
+                      ),
+                    ),
+                  ),
+                  ViewCountBadge(type: 'listing', id: listing.id, fontSize: 9.5),
+                ],
               ),
               const SizedBox(height: 5),
               OutlinedButton(
@@ -483,6 +501,8 @@ class DonorCard extends StatelessWidget {
                             background: AppColors.surface,
                             border: AppColors.border,
                           ),
+                          const SizedBox(width: 6),
+                          ViewCountBadge(type: 'donor', id: donor.id, fontSize: 12, pill: true),
                         ],
                       ),
                     ),
@@ -656,6 +676,7 @@ class BiodataCard extends StatelessWidget {
                 '📍 ${biodata.area ?? ''}',
                 style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
               ),
+              ViewCountBadge(type: 'biodata', id: biodata.id, fontSize: 10),
             ],
           ),
         ],

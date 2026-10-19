@@ -1,6 +1,7 @@
 import '../core/api/api_client.dart';
 import '../core/api/response_cache.dart';
 import '../core/utils/json.dart';
+import '../models/ask.dart';
 import '../models/catalog.dart';
 
 /// Reference data shared by many screens. Everything here is cached, because
@@ -9,6 +10,12 @@ class CatalogRepository {
   const CatalogRepository(this._api);
 
   final ApiClient _api;
+
+  /// "Ask CHT Plus" — answers a free-text question (never cached).
+  Future<AskAnswer> ask(String question) async {
+    final body = await _api.get('/api/ask', query: {'q': question});
+    return AskAnswer.fromJson(body is Map<String, dynamic> ? body : const {});
+  }
 
   Future<AppRemoteConfig> appConfig() async {
     final body = await _api.get('/api/app-config', cacheTtl: CacheTtl.config);

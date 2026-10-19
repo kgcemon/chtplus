@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,6 +8,8 @@ import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../core/utils/launchers.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_providers.dart';
+import '../../providers/core_providers.dart';
 import '../../router.dart';
 import 'widgets/auth_scaffold.dart';
 
@@ -25,6 +28,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _phone = TextEditingController();
+  // Filled from an invite link the user opened (/r/<code>), like the site.
+  late final _referralCode = TextEditingController(
+    text: ref.read(authRepositoryProvider).pendingReferralCode(),
+  );
   bool _obscure = true;
   bool _busy = false;
   bool _agreed = false;
@@ -35,6 +42,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _email.dispose();
     _password.dispose();
     _phone.dispose();
+    _referralCode.dispose();
     super.dispose();
   }
 
@@ -58,6 +66,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             email: _email.text,
             password: _password.text,
             phone: _phone.text,
+            referralCode: _referralEnabled ? _referralCode.text : null,
           );
       _onSignedIn();
     } on ApiException catch (error) {
@@ -76,8 +85,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  bool get _referralEnabled =>
+      ref.read(appRemoteConfigProvider).valueOrNull?.referralEnabled ?? false;
+
   @override
   Widget build(BuildContext context) {
+    final referralEnabled =
+        ref.watch(appRemoteConfigProvider).valueOrNull?.referralEnabled ?? false;
     return AuthScaffold(
       title: 'New account',
       subtitle: '',
@@ -154,6 +168,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ? 'Use at least 6 characters'
                     : null,
               ),
+              if (referralEnabled) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _referralCode,
+                  textCapitalization: TextCapitalization.characters,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp('[A-Za-z0-9]')),
+                    LengthLimitingTextInputFormatter(12),
+                  ],
+                  decoration: const InputDecoration(
+                    hintText: 'Referral code (optional)',
+                    prefixIcon: Icon(Icons.card_giftcard_rounded, size: 20),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

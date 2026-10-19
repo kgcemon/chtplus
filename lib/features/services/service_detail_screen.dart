@@ -14,6 +14,7 @@ import '../../data/moderation_repository.dart';
 import '../widgets/detail_parts.dart';
 import '../widgets/reviews_section.dart';
 import '../widgets/moderation.dart';
+import '../widgets/view_count.dart';
 
 /// A provider's details, drawn like the site's service popup: sponsor
 /// ribbon, "category · area" header, photo beside name / owner / Call /
@@ -27,29 +28,33 @@ class ServiceDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final service = ref.watch(serviceDetailProvider(id));
 
-    return service.when(
-      loading: () => const SheetPage(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(40),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        ],
-      ),
-      error: (error, _) => SheetPage(
-        children: [
-          ErrorView(
-            message: '$error',
-            onRetry: () => ref.invalidate(serviceDetailProvider(id)),
-          ),
-        ],
-      ),
-      data: (s) => _Content(
-        service: s,
-        onRefresh: () async {
-          ref.invalidate(serviceDetailProvider(id));
-          await ref.read(serviceDetailProvider(id).future);
-        },
+    return ViewTracker(
+      type: 'service',
+      id: id,
+      child: service.when(
+        loading: () => const SheetPage(
+          children: [
+            Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
+        ),
+        error: (error, _) => SheetPage(
+          children: [
+            ErrorView(
+              message: '$error',
+              onRetry: () => ref.invalidate(serviceDetailProvider(id)),
+            ),
+          ],
+        ),
+        data: (s) => _Content(
+          service: s,
+          onRefresh: () async {
+            ref.invalidate(serviceDetailProvider(id));
+            await ref.read(serviceDetailProvider(id).future);
+          },
+        ),
       ),
     );
   }

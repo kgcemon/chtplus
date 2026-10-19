@@ -29,7 +29,7 @@ class HomeHeader extends ConsumerWidget {
       toolbarHeight: _HeaderParts.height,
       backgroundColor: AppColors.forestDark,
       automaticallyImplyLeading: false,
-      leadingWidth: 62,
+      leadingWidth: _HeaderParts.leadingWidth,
       leading: parts.leading,
       centerTitle: true,
       title: parts.title,
@@ -59,7 +59,7 @@ class SiteAppBar extends ConsumerWidget implements PreferredSizeWidget {
       toolbarHeight: _HeaderParts.height,
       backgroundColor: AppColors.forestDark,
       automaticallyImplyLeading: false,
-      leadingWidth: 62,
+      leadingWidth: _HeaderParts.leadingWidth,
       leading: parts.leading,
       centerTitle: true,
       title: parts.title,
@@ -74,6 +74,7 @@ class _HeaderParts {
   const _HeaderParts(this.leading, this.title, this.actions);
 
   static const height = 64.0;
+  static const leadingWidth = 62.0;
 
   final Widget leading;
   final Widget title;
@@ -89,24 +90,12 @@ class _HeaderParts {
 
     return _HeaderParts(
       Center(
-        child: Material(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: canPop
-                ? () => Navigator.of(context).maybePop()
-                : () => AppShell.scaffoldKey.currentState?.openDrawer(),
-            child: SizedBox(
-              width: 38,
-              height: 38,
-              child: Icon(
-                canPop ? Icons.arrow_back_rounded : Icons.menu_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-          ),
+        child: _SquareButton(
+          icon: canPop ? Icons.arrow_back_rounded : Icons.menu_rounded,
+          tooltip: canPop ? 'Back' : 'Menu',
+          onTap: canPop
+              ? () => Navigator.of(context).maybePop()
+              : () => AppShell.scaffoldKey.currentState?.openDrawer(),
         ),
       ),
       InkWell(
@@ -114,6 +103,12 @@ class _HeaderParts {
         child: const SiteLogo(),
       ),
       [
+        // Ask CHT Plus — open to everyone, like the site's header search.
+        _BellButton(
+          icon: Icons.search_rounded,
+          count: 0,
+          onTap: () => context.push(Routes.ask),
+        ),
         if (signedIn) ...[
           _BellButton(
             icon: Icons.chat_bubble_outline_rounded,
@@ -176,6 +171,35 @@ class _TextLogo extends StatelessWidget {
         color: Colors.white,
         fontSize: 16,
         fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+/// The header's small translucent square button (menu or back).
+class _SquareButton extends StatelessWidget {
+  const _SquareButton({required this.icon, required this.tooltip, required this.onTap});
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: SizedBox(
+            width: 38,
+            height: 38,
+            child: Icon(icon, color: Colors.white, size: 21),
+          ),
+        ),
       ),
     );
   }

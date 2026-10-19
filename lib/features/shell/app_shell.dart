@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
+import '../../router.dart';
 import '../home/widgets/home_drawer.dart';
 
 /// Bottom navigation mirroring the website's mobile nav:
-/// Home · Services · Blood · Market · Biodata.
+/// Home · Services · Blood · Market · Biodata — plus an app-only Profile
+/// button (it opens sign-in for a visitor).
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.shell});
 
@@ -60,6 +62,13 @@ class AppShell extends StatelessWidget {
                       onTap: () => _onTap(i),
                     ),
                   ),
+                Expanded(
+                  child: _NavButton(
+                    item: const _NavItem('👤', 'Profile'),
+                    active: false,
+                    onTap: () => context.push(Routes.profile),
+                  ),
+                ),
               ],
             ),
           ),

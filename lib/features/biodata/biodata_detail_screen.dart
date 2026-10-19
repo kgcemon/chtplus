@@ -21,6 +21,7 @@ import '../../data/moderation_repository.dart';
 import '../home/widgets/home_header.dart';
 import '../widgets/form_fields.dart';
 import '../widgets/moderation.dart';
+import '../widgets/view_count.dart';
 
 /// Shows a teaser until the viewer has access, then the full record, both
 /// drawn like the site's biodata page: the paywall card, then the printed
@@ -34,44 +35,48 @@ class BiodataDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(biodataDetailProvider(id));
 
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(biodataDetailProvider(id));
-          await ref.read(biodataDetailProvider(id).future);
-        },
-        child: CustomScrollView(
-          slivers: [
-            const HomeHeader(),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
-              sliver: SliverToBoxAdapter(
-                child: detail.when(
-                  loading: () => const _Document(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Text(
-                        'Loading...',
-                        style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+    return ViewTracker(
+      type: 'biodata',
+      id: id,
+      child: Scaffold(
+        body: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(biodataDetailProvider(id));
+            await ref.read(biodataDetailProvider(id).future);
+          },
+          child: CustomScrollView(
+            slivers: [
+              const HomeHeader(),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+                sliver: SliverToBoxAdapter(
+                  child: detail.when(
+                    loading: () => const _Document(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'Loading...',
+                          style: TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                        ),
                       ),
                     ),
-                  ),
-                  error: (error, _) => ErrorView(
-                    message: '$error',
-                    onRetry: () => ref.invalidate(biodataDetailProvider(id)),
-                  ),
-                  data: (data) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      data.hasAccess ? _FullView(data: data) : _LockedView(data: data),
-                      const SizedBox(height: 12),
-                      ReportLink(target: ReportTarget.biodata, targetId: id, what: 'biodata'),
-                    ],
+                    error: (error, _) => ErrorView(
+                      message: '$error',
+                      onRetry: () => ref.invalidate(biodataDetailProvider(id)),
+                    ),
+                    data: (data) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        data.hasAccess ? _FullView(data: data) : _LockedView(data: data),
+                        const SizedBox(height: 12),
+                        ReportLink(target: ReportTarget.biodata, targetId: id, what: 'biodata'),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

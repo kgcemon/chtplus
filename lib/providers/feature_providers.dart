@@ -1,3 +1,6 @@
+import 'dart:async' show Timer;
+
+import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
@@ -188,6 +191,22 @@ final chatInboxProvider = FutureProvider.autoDispose<List<Conversation>>(
 final chatUnreadCountProvider = FutureProvider<int>((ref) async {
   if (!ref.watch(isSignedInProvider)) return 0;
   return ref.watch(chatRepositoryProvider).unreadCount();
+});
+
+/// While the app is open and signed in, re-checks the unread count every
+/// 20 s. Besides keeping the badge fresh, that request is what tells the
+/// server this user is online, so people who message them see two ticks.
+final chatPresenceProvider = Provider<void>((ref) {
+  if (!ref.watch(isSignedInProvider)) return;
+  final timer = Timer.periodic(const Duration(seconds: 20), (_) {
+    final state = WidgetsBinding.instance.lifecycleState;
+    if (state == null || state == AppLifecycleState.resumed) {
+      ref.invalidate(chatUnreadCountProvider);
+      // Fetch now even if no screen is showing the badge right now.
+      ref.read(chatUnreadCountProvider.future).ignore();
+    }
+  });
+  ref.onDispose(timer.cancel);
 });
 
 final chatSettingsProvider =

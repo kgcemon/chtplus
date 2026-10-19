@@ -9,6 +9,7 @@ class AppRemoteConfig {
     this.logoUrl,
     this.showCoinBalance = true,
     this.coinBuyEnabled = true,
+    this.referralEnabled = false,
   });
 
   final String? googleClientId;
@@ -22,12 +23,17 @@ class AppRemoteConfig {
   final bool showCoinBalance;
   final bool coinBuyEnabled;
 
+  /// Admin → Coins → Refer & Win. Off until the server says so, so the menu
+  /// entry never shows against a backend that doesn't have the feature yet.
+  final bool referralEnabled;
+
   factory AppRemoteConfig.fromJson(Map<String, dynamic> json) => AppRemoteConfig(
         googleClientId: json.strOrNull('googleClientId'),
         oneSignalAppId: json.strOrNull('oneSignalAppId'),
         logoUrl: json.strOrNull('logoUrl'),
         showCoinBalance: json['showCoinBalance'] != false,
         coinBuyEnabled: json['coinBuyEnabled'] != false,
+        referralEnabled: json['referralEnabled'] == true,
       );
 
   bool get googleEnabled => (googleClientId ?? '').isNotEmpty;

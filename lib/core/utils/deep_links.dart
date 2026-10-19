@@ -55,6 +55,8 @@ String? appRouteForLink(String? link) {
     '/biodata': '/biodata',
     '/biodata/list': '/biodata',
     '/coins': '/coins',
+    '/refer': '/refer',
+    '/ask': '/ask',
     '/chat': '/chat',
     '/profile': '/profile',
     '/saved': '/saved',

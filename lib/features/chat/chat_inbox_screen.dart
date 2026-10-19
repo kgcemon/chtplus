@@ -13,6 +13,7 @@ import '../../models/engagement.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../widgets/site_scaffold.dart';
+import 'message_ticks.dart';
 
 class ChatInboxScreen extends ConsumerStatefulWidget {
   const ChatInboxScreen({super.key});
@@ -218,15 +219,29 @@ class _ConversationTile extends ConsumerWidget {
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 3),
-        child: Text(
-          conversation.lastMessageBody ?? '',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 13,
-            color: unread ? AppColors.text : AppColors.textSecondary,
-            fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
-          ),
+        child: Row(
+          children: [
+            if (conversation.lastMessageMine) ...[
+              MessageTicks(
+                status: conversation.lastMessageStatus,
+                color: AppColors.textSecondary,
+                size: 15,
+              ),
+              const SizedBox(width: 4),
+            ],
+            Expanded(
+              child: Text(
+                conversation.lastMessageBody ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: unread ? AppColors.text : AppColors.textSecondary,
+                  fontWeight: unread ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
       trailing: Column(

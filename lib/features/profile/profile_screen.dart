@@ -8,6 +8,7 @@ import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/common.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../home/widgets/home_header.dart';
@@ -135,6 +136,8 @@ class _ProfileCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final follows = ref.watch(followListsProvider).valueOrNull;
     final coins = ref.watch(coinBalanceProvider).valueOrNull ?? 0;
+    final referralEnabled =
+        ref.watch(appRemoteConfigProvider).valueOrNull?.referralEnabled ?? false;
     final stats = me.stats;
 
     Future<void> go(String route) async {
@@ -275,6 +278,15 @@ class _ProfileCard extends ConsumerWidget {
           divider,
           _Row(icon: '🪙', text: '$coins coins', button: 'Buy coins', onTap: () => go(Routes.coins)),
           divider,
+          if (referralEnabled) ...[
+            _Row(
+              icon: '🎁',
+              text: 'Invite friends, earn coins',
+              button: 'Refer & Win',
+              onTap: () => go(Routes.refer),
+            ),
+            divider,
+          ],
           _Row(
             icon: '⚙️',
             text: 'Settings & privacy',

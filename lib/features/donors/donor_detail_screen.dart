@@ -15,11 +15,13 @@ import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../../data/moderation_repository.dart';
 import '../widgets/detail_parts.dart';
+import '../widgets/likers_list.dart';
 import '../widgets/reviews_section.dart';
 import '../widgets/moderation.dart';
+import '../widgets/view_count.dart';
 
 final _donorLikersProvider =
-    FutureProvider.autoDispose.family<List<({String name, bool blueBadge})>, String>(
+    FutureProvider.autoDispose.family<List<Liker>, String>(
   (ref, id) => ref.watch(donorRepositoryProvider).likers(id),
 );
 
@@ -35,24 +37,28 @@ class DonorDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final donor = ref.watch(donorDetailProvider(id));
 
-    return donor.when(
-      loading: () => const SheetPage(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(40),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        ],
+    return ViewTracker(
+      type: 'donor',
+      id: id,
+      child: donor.when(
+        loading: () => const SheetPage(
+          children: [
+            Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
+        ),
+        error: (error, _) => SheetPage(
+          children: [
+            ErrorView(
+              message: '$error',
+              onRetry: () => ref.invalidate(donorDetailProvider(id)),
+            ),
+          ],
+        ),
+        data: (d) => _Content(donor: d),
       ),
-      error: (error, _) => SheetPage(
-        children: [
-          ErrorView(
-            message: '$error',
-            onRetry: () => ref.invalidate(donorDetailProvider(id)),
-          ),
-        ],
-      ),
-      data: (d) => _Content(donor: d),
     );
   }
 }
@@ -236,34 +242,7 @@ class _ContentState extends ConsumerState<_Content> {
             error: (_, __) => const _Note('Could not load'),
             data: (likers) => likers.isEmpty
                 ? const _Note('No one has liked this yet')
-                : Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final liker in likers)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFDECEB),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '❤️ ${liker.name}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.red,
-                                ),
-                              ),
-                              VerifiedBadge(active: liker.blueBadge, size: 12),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
+                : LikersList(likers: likers),
           ),
         ],
         const SizedBox(height: 16),

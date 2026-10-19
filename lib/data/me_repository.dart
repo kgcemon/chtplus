@@ -4,6 +4,7 @@ import '../core/api/api_client.dart';
 import '../core/utils/json.dart';
 import '../models/engagement.dart';
 import '../models/public_profile.dart';
+import '../models/referral.dart';
 import '../models/user.dart';
 
 /// Everything under `/api/me`, plus the public profile and follow endpoints.
@@ -173,6 +174,13 @@ class MeRepository {
   Future<List<Review>> myReviews() async {
     final body = await _api.get('/api/me/reviews');
     return parseList(body, Review.fromJson);
+  }
+
+  // --- Refer & Win --------------------------------------------------------
+
+  Future<ReferralSummary> referral() async {
+    final body = await _api.get('/api/me/referral');
+    return ReferralSummary.fromJson(body is Map<String, dynamic> ? body : const {});
   }
 
   // --- Account ------------------------------------------------------------

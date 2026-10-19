@@ -15,6 +15,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../widgets/moderation.dart';
+import 'message_ticks.dart';
 
 /// One conversation. New messages are picked up by polling with the `after`
 /// parameter the API already supports, so only the delta is transferred.
@@ -40,6 +41,9 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
   bool _sending = false;
   bool _blockedByMe = false;
   bool _blockedMe = false;
+  // Receipts for my own messages (see MessageTicks).
+  int _deliveredUpTo = 0;
+  int _readUpTo = 0;
   String? _error;
 
   @override
@@ -85,6 +89,8 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
         _partner = thread.otherUser;
         _blockedByMe = thread.blockedByMe;
         _blockedMe = thread.blockedMe;
+        _deliveredUpTo = thread.deliveredUpTo;
+        _readUpTo = thread.readUpTo;
         _loading = false;
         _error = null;
       });
@@ -111,8 +117,20 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
       final thread = await ref
           .read(chatRepositoryProvider)
           .messages(widget.conversationId, after: lastId);
-      if (!mounted || thread.messages.isEmpty) return;
+      if (!mounted) return;
+      // Ticks can change with no new message (the other person read it).
+      if (thread.messages.isEmpty) {
+        if (thread.deliveredUpTo != _deliveredUpTo || thread.readUpTo != _readUpTo) {
+          setState(() {
+            _deliveredUpTo = thread.deliveredUpTo;
+            _readUpTo = thread.readUpTo;
+          });
+        }
+        return;
+      }
       setState(() {
+        _deliveredUpTo = thread.deliveredUpTo;
+        _readUpTo = thread.readUpTo;
         _messages = [..._messages, ...thread.messages];
         _partner = thread.otherUser ?? _partner;
       });
@@ -305,7 +323,17 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
                                         ),
                                       ),
                                     ),
-                                  _Bubble(message: message, mine: mine),
+                                  _Bubble(
+                                    message: message,
+                                    mine: mine,
+                                    status: mine
+                                        ? MessageTicks.statusFor(
+                                            message.id,
+                                            deliveredUpTo: _deliveredUpTo,
+                                            readUpTo: _readUpTo,
+                                          )
+                                        : null,
+                                  ),
                                 ],
                               );
                             },
@@ -353,10 +381,13 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
 }
 
 class _Bubble extends StatelessWidget {
-  const _Bubble({required this.message, required this.mine});
+  const _Bubble({required this.message, required this.mine, this.status});
 
   final ChatMessage message;
   final bool mine;
+
+  /// Ticks for my own (saved) messages; null for the other person's.
+  final String? status;
 
   @override
   Widget build(BuildContext context) {
@@ -409,6 +440,13 @@ class _Bubble extends StatelessWidget {
                       strokeWidth: 1.4,
                       color: Colors.white70,
                     ),
+                  ),
+                ] else if (status != null) ...[
+                  const SizedBox(width: 4),
+                  MessageTicks(
+                    status: status,
+                    color: Colors.white70,
+                    readColor: const Color(0xFF7FD4FF),
                   ),
                 ],
               ],

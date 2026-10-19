@@ -12,6 +12,7 @@ import '../data/me_repository.dart';
 import '../data/moderation_repository.dart';
 import '../data/review_repository.dart';
 import '../data/service_repository.dart';
+import '../data/views_repository.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient.instance);
 
@@ -47,3 +48,7 @@ final reviewRepositoryProvider =
 
 final billingRepositoryProvider =
     Provider<BillingRepository>((ref) => BillingRepository(ref.watch(apiClientProvider)));
+
+// One instance, so card view-count requests from all screens batch together.
+final viewsRepositoryProvider =
+    Provider<ViewsRepository>((ref) => ViewsRepository(ref.watch(apiClientProvider)));

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/app_update.dart';
 import 'core/storage/prefs.dart';
 import 'core/storage/token_store.dart';
 import 'providers/auth_provider.dart';
@@ -36,6 +37,9 @@ Future<void> main() async {
       child: const ChtPlusApp(),
     ),
   );
+
+  // Google Play in-app updates (Android only; see core/app_update.dart).
+  AppUpdater.instance.start();
 }
 
 void unawaited(Future<void> future) {
