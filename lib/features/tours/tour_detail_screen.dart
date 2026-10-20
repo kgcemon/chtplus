@@ -289,7 +289,7 @@ class _TourDetailScreenState extends ConsumerState<TourDetailScreen> {
                       child: const Text('🌄', style: TextStyle(fontSize: 22)),
                     )
                   else
-                    Avatar(url: t.organizer.photoUrl, name: t.organizer.name, size: 44),
+                    Avatar(url: t.organizer.photoUrl, name: t.organizer.name, size: 44, userId: t.organizer.userId),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -440,7 +440,7 @@ class _TourDetailScreenState extends ConsumerState<TourDetailScreen> {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Avatar(url: b.photoUrl, name: b.name, size: 36),
+                      Avatar(url: b.photoUrl, name: b.name, size: 36, userId: b.userId),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(

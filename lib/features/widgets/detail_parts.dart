@@ -211,7 +211,7 @@ class OwnerChip extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
               ],
-              Avatar(url: photoUrl, name: name, size: 26),
+              Avatar(url: photoUrl, name: name, size: 26, userId: userId),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(

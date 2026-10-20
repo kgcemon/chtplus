@@ -76,7 +76,7 @@ class _UserList extends StatelessWidget {
         final user = users[index];
         return ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          leading: Avatar(url: user.photoUrl, name: user.name, size: 44),
+          leading: Avatar(url: user.photoUrl, name: user.name, size: 44, userId: user.id),
           title: Row(
             children: [
               Flexible(

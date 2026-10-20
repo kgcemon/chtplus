@@ -200,7 +200,7 @@ class _ReviewTileState extends ConsumerState<_ReviewTile> {
                     padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Row(
                       children: [
-                        Avatar(name: review.reviewerName, size: 34),
+                        Avatar(name: review.reviewerName, size: 34, userId: review.reviewerUserId),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -352,6 +352,7 @@ class _RepliesList extends ConsumerWidget {
                           url: reply.userPhotoUrl,
                           name: reply.userName,
                           size: 26,
+                          userId: reply.userId,
                         ),
                       ),
                       const SizedBox(width: 9),

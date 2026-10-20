@@ -36,7 +36,7 @@ class LikersList extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  Avatar(url: liker.photoUrl, name: liker.name, size: 32),
+                  Avatar(url: liker.photoUrl, name: liker.name, size: 32, userId: liker.id),
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(

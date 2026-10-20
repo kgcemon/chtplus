@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/app_update.dart';
+import 'core/device_ping.dart';
 import 'core/storage/prefs.dart';
 import 'core/storage/token_store.dart';
 import 'providers/auth_provider.dart';
@@ -40,6 +41,9 @@ Future<void> main() async {
 
   // Google Play in-app updates (Android only; see core/app_update.dart).
   AppUpdater.instance.start();
+
+  // Counts this phone on Admin → Dashboard (see core/device_ping.dart).
+  DevicePing.instance.start();
 }
 
 void unawaited(Future<void> future) {

@@ -171,6 +171,8 @@ class ChatPartner {
     this.photoUrl,
     this.chatEnabled = true,
     this.blueBadge = false,
+    this.online = false,
+    this.lastSeenAt,
   });
 
   final String id;
@@ -178,6 +180,24 @@ class ChatPartner {
   final String? photoUrl;
   final bool chatEnabled;
   final bool blueBadge;
+  final bool online;
+  final DateTime? lastSeenAt;
+
+  /// "Active now" / "Active 6m ago" (null when not seen for a week), like the
+  /// site's chat header.
+  String? get activeStatus {
+    if (online) return 'Active now';
+    final seen = lastSeenAt;
+    if (seen == null) return null;
+    final minutes = DateTime.now().difference(seen).inMinutes;
+    final m = minutes < 1 ? 1 : minutes;
+    if (m < 60) return 'Active ${m}m ago';
+    final h = m ~/ 60;
+    if (h < 24) return 'Active ${h}h ago';
+    final d = h ~/ 24;
+    if (d < 7) return 'Active ${d}d ago';
+    return null;
+  }
 
   factory ChatPartner.fromJson(Map<String, dynamic> json) => ChatPartner(
         id: json.str('id'),
@@ -185,6 +205,8 @@ class ChatPartner {
         photoUrl: json.strOrNull('photoUrl'),
         chatEnabled: json.flag('chatEnabled', fallback: true),
         blueBadge: json.flag('blueBadge'),
+        online: json.flag('online'),
+        lastSeenAt: json.date('lastSeenAt'),
       );
 }
 

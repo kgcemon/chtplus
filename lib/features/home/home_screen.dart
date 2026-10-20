@@ -8,6 +8,7 @@ import '../../core/utils/launchers.dart';
 import '../../core/widgets/common.dart';
 import '../../models/catalog.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/catalog_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../providers/home_provider.dart';
 import '../../router.dart';
@@ -80,6 +81,7 @@ class HomeScreen extends ConsumerWidget {
     return [
       SliverToBoxAdapter(child: BannerSlider(banners: data.banners)),
       const SliverToBoxAdapter(child: QuickNav()),
+      const SliverToBoxAdapter(child: _MemberCount()),
       for (final key in order)
         SliverToBoxAdapter(
           child: switch (key) {
@@ -555,6 +557,35 @@ class _FooterLink extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Text(label, style: _SiteFooter._linkStyle),
+      ),
+    );
+  }
+}
+
+/// "👥 12,400+ people use CHT Plus" under the quick links, like the site's
+/// `.home-members`. Hidden unless the admin turns the member count on.
+class _MemberCount extends ConsumerWidget {
+  const _MemberCount();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final label = ref.watch(appRemoteConfigProvider).valueOrNull?.memberCountLabel;
+    if (label == null || label.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            const TextSpan(text: '👥 '),
+            TextSpan(
+              text: label,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.forestDark),
+            ),
+            const TextSpan(text: ' people use CHT Plus'),
+          ],
+        ),
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
       ),
     );
   }

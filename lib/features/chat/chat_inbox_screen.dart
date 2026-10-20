@@ -200,6 +200,7 @@ class _ConversationTile extends ConsumerWidget {
         url: conversation.otherUserPhotoUrl,
         name: conversation.otherUserName,
         size: 48,
+        userId: conversation.otherUserId,
       ),
       title: Row(
         children: [

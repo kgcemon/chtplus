@@ -67,5 +67,10 @@ class PrefKeys {
 
   /// When the user last said "No thanks" to the Play update prompt.
   static const updateDeclinedAt = 'update_declined_at';
+
+  /// The anonymous id this install reports to the server (core/device_ping.dart)
+  /// and when it last did.
+  static const deviceId = 'device_id';
+  static const devicePingAt = 'device_ping_at';
   static const httpCachePrefix = 'http_cache:';
 }

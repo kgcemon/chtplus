@@ -378,7 +378,7 @@ class _FriendsCard extends StatelessWidget {
                 onTap: friends[i].userId.isEmpty ? null : () => context.push('/u/${friends[i].userId}'),
                 child: Row(
                   children: [
-                    Avatar(url: friends[i].photoUrl, name: friends[i].name, size: 36),
+                    Avatar(url: friends[i].photoUrl, name: friends[i].name, size: 36, userId: friends[i].userId),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(

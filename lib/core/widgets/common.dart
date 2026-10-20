@@ -5,9 +5,11 @@ import '../config.dart';
 import '../theme.dart';
 import '../utils/formatters.dart';
 import 'app_network_image.dart';
+import 'online_dot.dart';
 
 /// Round profile picture with an initials fallback, used everywhere a user or
-/// donor is shown.
+/// donor is shown. Give a person's [userId] to show the green "online now"
+/// dot while they are active.
 class Avatar extends StatelessWidget {
   const Avatar({
     super.key,
@@ -15,12 +17,14 @@ class Avatar extends StatelessWidget {
     this.name,
     this.size = 44,
     this.borderColor,
+    this.userId,
   });
 
   final String? url;
   final String? name;
   final double size;
   final Color? borderColor;
+  final String? userId;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +51,7 @@ class Avatar extends StatelessWidget {
             placeholderIcon: Icons.person_outline,
           );
 
-    return Container(
+    final circle = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -55,6 +59,19 @@ class Avatar extends StatelessWidget {
         border: borderColor == null ? null : Border.all(color: borderColor!, width: 2),
       ),
       child: ClipOval(child: child),
+    );
+    final id = userId;
+    if (id == null || id.isEmpty) return circle;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          circle,
+          Positioned(right: 0, bottom: 0, child: OnlineDot(userId: id, avatarSize: size)),
+        ],
+      ),
     );
   }
 }

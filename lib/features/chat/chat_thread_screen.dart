@@ -120,12 +120,11 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
       if (!mounted) return;
       // Ticks can change with no new message (the other person read it).
       if (thread.messages.isEmpty) {
-        if (thread.deliveredUpTo != _deliveredUpTo || thread.readUpTo != _readUpTo) {
-          setState(() {
-            _deliveredUpTo = thread.deliveredUpTo;
-            _readUpTo = thread.readUpTo;
-          });
-        }
+        setState(() {
+          _deliveredUpTo = thread.deliveredUpTo;
+          _readUpTo = thread.readUpTo;
+          _partner = thread.otherUser ?? _partner;
+        });
         return;
       }
       setState(() {
@@ -235,23 +234,38 @@ class _ChatThreadScreenState extends ConsumerState<ChatThreadScreen>
           onTap: _partner == null ? null : () => context.push('/u/${_partner!.id}'),
           child: Row(
             children: [
-              Avatar(url: _partner?.photoUrl, name: name, size: 34),
+              Avatar(url: _partner?.photoUrl, name: name, size: 34, userId: _partner?.id),
               const SizedBox(width: 10),
               Flexible(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Flexible(
-                      child: Text(
-                        name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        VerifiedBadge(active: _partner?.blueBadge ?? false, size: 14),
+                      ],
+                    ),
+                    if (_partner?.activeStatus != null)
+                      Text(
+                        _partner!.activeStatus!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: _partner!.online ? FontWeight.w600 : FontWeight.w400,
+                          color: _partner!.online ? const Color(0xFF31A24C) : AppColors.textSecondary,
                         ),
                       ),
-                    ),
-                    VerifiedBadge(active: _partner?.blueBadge ?? false, size: 14),
                   ],
                 ),
               ),

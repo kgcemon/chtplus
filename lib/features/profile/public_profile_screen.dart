@@ -269,7 +269,7 @@ class _Cover extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 4),
               ),
-              child: Avatar(url: profile.photoUrl, name: profile.name, size: 96),
+              child: Avatar(url: profile.photoUrl, name: profile.name, size: 96, userId: profile.id),
             ),
           ),
         ],

@@ -10,6 +10,7 @@ class AppRemoteConfig {
     this.showCoinBalance = true,
     this.coinBuyEnabled = true,
     this.referralEnabled = false,
+    this.memberCountLabel,
   });
 
   final String? googleClientId;
@@ -27,6 +28,10 @@ class AppRemoteConfig {
   /// entry never shows against a backend that doesn't have the feature yet.
   final bool referralEnabled;
 
+  /// "12,400+" members, shown on the home screen; null while the admin keeps
+  /// the member count hidden.
+  final String? memberCountLabel;
+
   factory AppRemoteConfig.fromJson(Map<String, dynamic> json) => AppRemoteConfig(
         googleClientId: json.strOrNull('googleClientId'),
         oneSignalAppId: json.strOrNull('oneSignalAppId'),
@@ -34,6 +39,7 @@ class AppRemoteConfig {
         showCoinBalance: json['showCoinBalance'] != false,
         coinBuyEnabled: json['coinBuyEnabled'] != false,
         referralEnabled: json['referralEnabled'] == true,
+        memberCountLabel: json.strOrNull('memberCountLabel'),
       );
 
   bool get googleEnabled => (googleClientId ?? '').isNotEmpty;
