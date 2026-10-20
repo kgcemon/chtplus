@@ -2,6 +2,7 @@ import '../core/api/api_client.dart';
 import '../core/api/response_cache.dart';
 import '../core/utils/json.dart';
 import '../models/billing.dart';
+import '../models/blue_badge.dart';
 
 /// Coins, matrimony subscriptions and the boost packages for services and
 /// marketplace adverts.
@@ -13,6 +14,21 @@ class BillingRepository {
   const BillingRepository(this._api);
 
   final ApiClient _api;
+
+  // --- Blue tick (bought with coins) --------------------------------------
+
+  Future<BlueBadgeInfo> blueBadge() async {
+    final body = await _api.get('/api/blue-badge');
+    return BlueBadgeInfo.fromJson(body is Map<String, dynamic> ? body : const {});
+  }
+
+  /// Pays with coins; fails with `insufficient_coins` (data: cost,
+  /// coinBalance) or `already_permanent`. Returns the new status.
+  Future<BlueBadgeStatus> buyBlueBadge(String packageId) async {
+    final body = await _api.post('/api/blue-badge/buy', body: {'packageId': packageId});
+    final map = body is Map<String, dynamic> ? body : const <String, dynamic>{};
+    return BlueBadgeStatus.fromJson(map.mapOrNull('status') ?? const {});
+  }
 
   Future<int> coinBalance() async {
     final body = await _api.get('/api/me/coins');

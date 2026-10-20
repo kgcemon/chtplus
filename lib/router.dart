@@ -12,6 +12,7 @@ import 'features/biodata/biodata_wizard_screen.dart';
 import 'features/biodata/my_biodata_screen.dart';
 import 'features/chat/chat_inbox_screen.dart';
 import 'features/chat/chat_thread_screen.dart';
+import 'features/coins/blue_tick_screen.dart';
 import 'features/coins/coins_screen.dart';
 import 'features/donors/donor_detail_screen.dart';
 import 'features/donors/donor_form_screen.dart';
@@ -61,6 +62,7 @@ class Routes {
   static const coins = '/coins';
   static const refer = '/refer';
   static const ask = '/ask';
+  static const blueTick = '/blue-tick';
   static const settings = '/settings';
   static const about = '/about';
 
@@ -339,6 +341,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.coins,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const CoinsScreen(),
+      ),
+      GoRoute(
+        path: Routes.blueTick,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BlueTickScreen(),
       ),
       GoRoute(
         path: Routes.ask,

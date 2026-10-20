@@ -57,6 +57,7 @@ String? appRouteForLink(String? link) {
     '/coins': '/coins',
     '/refer': '/refer',
     '/ask': '/ask',
+    '/blue-tick': '/blue-tick',
     '/chat': '/chat',
     '/profile': '/profile',
     '/saved': '/saved',

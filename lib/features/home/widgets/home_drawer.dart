@@ -139,6 +139,16 @@ class HomeDrawer extends ConsumerWidget {
                     child: const Text('🎁  Refer & Win'),
                   ),
                 _DrawerItem(
+                  onTap: () => go(Routes.blueTick),
+                  child: const Row(
+                    children: [
+                      VerifiedBadge(active: true, size: 16),
+                      SizedBox(width: 8),
+                      Text('Get blue tick'),
+                    ],
+                  ),
+                ),
+                _DrawerItem(
                   onTap: () => go(Routes.chat),
                   child: Row(
                     children: [

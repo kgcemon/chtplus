@@ -278,6 +278,13 @@ class _ProfileCard extends ConsumerWidget {
           divider,
           _Row(icon: '🪙', text: '$coins coins', button: 'Buy coins', onTap: () => go(Routes.coins)),
           divider,
+          _Row(
+            icon: '✔️',
+            text: me.blueBadge ? 'Blue tick is on' : 'Get the blue tick',
+            button: me.blueBadge ? 'Extend' : 'Get it',
+            onTap: () => go(Routes.blueTick),
+          ),
+          divider,
           if (referralEnabled) ...[
             _Row(
               icon: '🎁',
