@@ -7,6 +7,7 @@ import '../../core/api/api_exception.dart';
 import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../core/utils/launchers.dart';
+import '../../core/widgets/app_snackbar.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_providers.dart';
 import '../../providers/core_providers.dart';
@@ -27,7 +28,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
-  final _phone = TextEditingController();
+  final _code = TextEditingController();
+  // Set once the server has emailed a sign-up code to this address.
+  String? _verifyEmail;
   // Filled from an invite link the user opened (/r/<code>), like the site.
   late final _referralCode = TextEditingController(
     text: ref.read(authRepositoryProvider).pendingReferralCode(),
@@ -41,7 +44,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _name.dispose();
     _email.dispose();
     _password.dispose();
-    _phone.dispose();
+    _code.dispose();
     _referralCode.dispose();
     super.dispose();
   }
@@ -61,23 +64,138 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
     setState(() => _busy = true);
     try {
-      await ref.read(authControllerProvider.notifier).register(
+      final needsCode = await ref.read(authControllerProvider.notifier).register(
             name: _name.text,
             email: _email.text,
             password: _password.text,
-            phone: _phone.text,
             referralCode: _referralEnabled ? _referralCode.text : null,
           );
-      _onSignedIn();
+      if (!needsCode) {
+        _onSignedIn();
+      } else if (mounted) {
+        setState(() {
+          _verifyEmail = _email.text.trim().toLowerCase();
+          _code.clear();
+        });
+      }
     } on ApiException catch (error) {
-      if (mounted) showAuthError(context, error.message);
+      if (mounted) showAuthError(context, _signupErrors[error.code] ?? error.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  static const _signupErrors = {
+    'too_many_signups': 'Too many new accounts from this network — please try again later.',
+    'too_many_codes': 'Too many codes sent — please try again later.',
+    'invalid_code': 'That code is not right — check the email and try again.',
+    'code_expired': 'That code has expired — send a new one.',
+    'too_many_attempts': 'Too many wrong tries — send a new code.',
+    'no_pending_signup': 'Please start the sign-up again.',
+  };
+
+  Future<void> _verify() async {
+    final email = _verifyEmail;
+    if (email == null || _code.text.trim().length != 6) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(authControllerProvider.notifier).verifyEmail(email: email, code: _code.text.trim());
+      _onSignedIn();
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      final left = error.data?['attemptsLeft'];
+      showAuthError(
+        context,
+        '${_signupErrors[error.code] ?? error.message}${error.code == 'invalid_code' && left != null ? ' ($left tries left)' : ''}',
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _resend() async {
+    final email = _verifyEmail;
+    if (email == null) return;
+    try {
+      await ref.read(authRepositoryProvider).resendSignupCode(email);
+      if (mounted) AppSnackbar.success(context, 'A new code has been sent.');
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      final wait = error.data?['waitSeconds'];
+      showAuthError(
+        context,
+        error.code == 'wait' && wait != null ? 'Please wait $wait seconds before asking again.' : (_signupErrors[error.code] ?? error.message),
+      );
+    }
+  }
+
+  /// Step 2 of an email sign-up: the 6-digit code.
+  Widget _codeStep() {
+    return AuthScaffold(
+      title: 'Check your email',
+      subtitle: '',
+      tab: AuthTab.register,
+      children: [
+        Text.rich(
+          TextSpan(
+            text: 'We sent a 6-digit code to ',
+            children: [
+              TextSpan(text: _verifyEmail, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.text)),
+              const TextSpan(text: '. Enter it to finish creating your account.'),
+            ],
+          ),
+          style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _code,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          maxLength: 6,
+          autofillHints: const [AutofillHints.oneTimeCode],
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) => _verify(),
+          style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.w700),
+          decoration: const InputDecoration(hintText: '······', counterText: ''),
+        ),
+        const SizedBox(height: 14),
+        FilledButton(
+          onPressed: _busy || _code.text.trim().length != 6 ? null : _verify,
+          style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
+          child: _busy
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                )
+              : const Text('Verify and create account'),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TextButton(onPressed: _resend, child: const Text('Send the code again')),
+            TextButton(onPressed: () => setState(() => _verifyEmail = null), child: const Text('Use a different email')),
+          ],
+        ),
+        const Text(
+          'Can’t find it? Check the spam folder.',
+          style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
   Future<void> _google(String credential) async {
     try {
+      // A code typed here counts for a Google sign-up too: the Google call
+      // sends the stored code (see AuthRepository.googleSignIn).
+      final typed = _referralCode.text.trim();
+      if (_referralEnabled && typed.isNotEmpty) {
+        await ref.read(authRepositoryProvider).savePendingReferralCode(typed);
+      }
       await ref.read(authControllerProvider.notifier).signInWithGoogle(credential);
       _onSignedIn();
     } on ApiException catch (error) {
@@ -90,6 +208,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_verifyEmail != null) return _codeStep();
     final referralEnabled =
         ref.watch(appRemoteConfigProvider).valueOrNull?.referralEnabled ?? false;
     return AuthScaffold(
@@ -132,17 +251,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   }
                   return null;
                 },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.telephoneNumber],
-                decoration: const InputDecoration(
-                  hintText: 'Mobile number (optional)',
-                  prefixIcon: Icon(Icons.phone_outlined, size: 20),
-                ),
               ),
               const SizedBox(height: 12),
               TextFormField(

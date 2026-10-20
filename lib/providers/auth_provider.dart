@@ -76,22 +76,27 @@ class AuthController extends Notifier<AuthState> {
     state = AuthState(user: result.user, restoring: false);
   }
 
-  Future<void> register({
+  /// Returns true when a code was emailed and [verifyEmail] must follow;
+  /// false when the account was created and signed in straight away.
+  Future<bool> register({
     required String name,
     required String email,
     required String password,
-    String? phone,
-    String? area,
     String? referralCode,
   }) async {
     final result = await ref.read(authRepositoryProvider).register(
           name: name,
           email: email,
           password: password,
-          phone: phone,
-          area: area,
           referralCode: referralCode,
         );
+    if (result == null) return true;
+    state = AuthState(user: result.user, restoring: false);
+    return false;
+  }
+
+  Future<void> verifyEmail({required String email, required String code}) async {
+    final result = await ref.read(authRepositoryProvider).verifyEmail(email: email, code: code);
     state = AuthState(user: result.user, restoring: false);
   }
 

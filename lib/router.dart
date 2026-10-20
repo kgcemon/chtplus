@@ -38,6 +38,10 @@ import 'features/settings/about_screen.dart';
 import 'features/settings/blocked_users_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/shell/app_shell.dart';
+import 'features/tours/my_trips_screen.dart';
+import 'features/tours/organize_tour_screen.dart';
+import 'features/tours/tour_detail_screen.dart';
+import 'features/tours/tours_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/core_providers.dart';
 
@@ -63,6 +67,7 @@ class Routes {
   static const refer = '/refer';
   static const ask = '/ask';
   static const blueTick = '/blue-tick';
+  static const tours = '/tours';
   static const settings = '/settings';
   static const about = '/about';
 
@@ -109,6 +114,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         Routes.saved,
         Routes.coins,
         Routes.refer,
+        '/tours/organize',
+        '/tours/my',
         Routes.myServices,
         Routes.myListings,
         Routes.myBiodata,
@@ -341,6 +348,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.coins,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const CoinsScreen(),
+      ),
+      // Group tours. The fixed paths come before /tours/:id.
+      GoRoute(
+        path: Routes.tours,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ToursScreen(),
+      ),
+      GoRoute(
+        path: '/tours/organize',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const OrganizeTourScreen(),
+      ),
+      GoRoute(
+        path: '/tours/my',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const MyTripsScreen(),
+      ),
+      GoRoute(
+        path: '/tours/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => TourDetailScreen(id: state.pathParameters['id']!),
       ),
       GoRoute(
         path: Routes.blueTick,

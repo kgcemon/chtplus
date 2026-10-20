@@ -25,12 +25,13 @@ class AuthRepository {
     return _persist(body);
   }
 
-  Future<AuthResult> register({
+  /// Email sign-up. Usually the server only emails a 6-digit code and this
+  /// returns null — finish with [verifyEmail]. It returns the session directly
+  /// when the server has email verification switched off.
+  Future<AuthResult?> register({
     required String name,
     required String email,
     required String password,
-    String? phone,
-    String? area,
     String? referralCode,
   }) async {
     final code = cleanReferralCode(referralCode);
@@ -38,13 +39,27 @@ class AuthRepository {
       'name': name.trim(),
       'email': email.trim().toLowerCase(),
       'password': password,
-      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
-      if (area != null && area.trim().isNotEmpty) 'area': area.trim(),
       if (code.isNotEmpty) 'referralCode': code,
+      'emailVerification': true,
+    });
+    if (body is Map<String, dynamic> && body.flag('pending')) return null;
+    await clearPendingReferralCode();
+    return _persist(body);
+  }
+
+  /// The code from the sign-up email: creates the account and signs in.
+  Future<AuthResult> verifyEmail({required String email, required String code}) async {
+    final body = await _api.post('/api/auth/verify-email', body: {
+      'email': email.trim().toLowerCase(),
+      'code': code.trim(),
     });
     await clearPendingReferralCode();
     return _persist(body);
   }
+
+  /// Emails the sign-up code again (the server allows it once a minute).
+  Future<void> resendSignupCode(String email) =>
+      _api.post('/api/auth/register/resend', body: {'email': email.trim().toLowerCase()});
 
   /// Exchanges a Google ID token for a CHT Plus session. A Refer & Win code
   /// from an opened invite link goes along; the server only uses it when this

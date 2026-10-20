@@ -20,7 +20,7 @@ const _examples = [
   'hotel in sajek',
 ];
 
-const _typeIcons = {'donor': '🩸', 'service': '🧰', 'listing': '🛒', 'biodata': '💍'};
+const _typeIcons = {'donor': '🩸', 'service': '🧰', 'listing': '🛒', 'biodata': '💍', 'tour': '🧳'};
 
 // The bottom-nav tabs are switched to (go), everything else is pushed.
 const _tabRoots = {'/', '/services', '/donors', '/marketplace', '/biodata'};

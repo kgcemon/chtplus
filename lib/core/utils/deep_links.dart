@@ -58,6 +58,7 @@ String? appRouteForLink(String? link) {
     '/refer': '/refer',
     '/ask': '/ask',
     '/blue-tick': '/blue-tick',
+    '/tours': '/tours',
     '/chat': '/chat',
     '/profile': '/profile',
     '/saved': '/saved',
@@ -73,6 +74,7 @@ String? appRouteForLink(String? link) {
     '/marketplace/listing/',
     '/biodata/view/',
     '/u/',
+    '/tours/',
   ];
   for (final prefix in prefixes) {
     if (path.startsWith(prefix) && path.length > prefix.length) return path;

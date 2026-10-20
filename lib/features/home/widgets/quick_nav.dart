@@ -15,8 +15,7 @@ class QuickNav extends StatelessWidget {
     _QuickItem('🩸', 'Blood Donors', Routes.donors, tab: true),
     _QuickItem('🛒', 'Marketplace', Routes.marketplace, tab: true),
     _QuickItem('💍', 'Matrimony', Routes.biodata, tab: true),
-    // Not open yet: the site shows a "coming soon" popup instead of a page.
-    _QuickItem('🧳', 'Tour & Travels', null),
+    _QuickItem('🧳', 'Tour & Travels', Routes.tours),
   ];
 
   @override
@@ -34,40 +33,14 @@ class QuickNav extends StatelessWidget {
               circle: true,
               onTap: () {
                 final path = item.path;
-                if (path == null) {
-                  _showComingSoon(context);
-                } else if (item.tab) {
+                if (path == null) return;
+                if (item.tab) {
                   context.go(path);
                 } else {
                   context.push(path);
                 }
               },
             ),
-        ],
-      ),
-    );
-  }
-
-  void _showComingSoon(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        icon: const Text('🧳', style: TextStyle(fontSize: 40)),
-        title: const Text(
-          'Coming soon',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-        ),
-        content: const Text(
-          'Tour & Travels is on its way — it will be available very soon.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, height: 1.5),
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
         ],
       ),
     );
