@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme.dart';
@@ -8,7 +9,7 @@ import '../home/widgets/home_drawer.dart';
 /// Bottom navigation mirroring the website's mobile nav:
 /// Home · Services · Blood · Market · Biodata — plus an app-only Profile
 /// button (it opens sign-in for a visitor).
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
@@ -17,6 +18,11 @@ class AppShell extends StatelessWidget {
   /// whole screen (bottom nav included), as the site's menu covers the page.
   static final scaffoldKey = GlobalKey<ScaffoldState>();
 
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
   static const _items = <_NavItem>[
     _NavItem('🏠', 'Home'),
     _NavItem('🧰', 'Services'),
@@ -25,16 +31,65 @@ class AppShell extends StatelessWidget {
     _NavItem('💍', 'Biodata'),
   ];
 
+  static const _exitWindow = Duration(seconds: 2);
+  DateTime? _lastBackOnHome;
+
+  StatefulNavigationShell get shell => widget.shell;
+
   void _onTap(int index) {
     // Tapping the active tab again pops it back to its first screen, which is
     // what people expect from a tab bar.
     shell.goBranch(index, initialLocation: index == shell.currentIndex);
   }
 
+  /// The Android back button. The router gets the first go — it pops any
+  /// screen opened on top (details, settings…) and lets a screen's own
+  /// PopScope act (the services list closes a category). Only when there is
+  /// nothing left to pop, instead of quitting the app: close the menu if it is
+  /// open, go to Home from another tab, and on Home quit only on a second
+  /// press within two seconds.
+  Future<bool> _onBack() async {
+    final scaffold = AppShell.scaffoldKey.currentState;
+    if (scaffold?.isDrawerOpen ?? false) {
+      scaffold!.closeDrawer();
+      return true;
+    }
+    final router = GoRouter.of(context);
+    if (await router.routerDelegate.popRoute()) return true;
+    if (!mounted) return true;
+
+    if (shell.currentIndex != 0) {
+      shell.goBranch(0);
+      return true;
+    }
+    final now = DateTime.now();
+    if (_lastBackOnHome != null && now.difference(_lastBackOnHome!) < _exitWindow) {
+      await SystemNavigator.pop();
+      return true;
+    }
+    _lastBackOnHome = now;
+    ScaffoldMessenger.maybeOf(context)
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to exit'),
+          duration: _exitWindow,
+        ),
+      );
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
+    return BackButtonListener(
+      onBackButtonPressed: _onBack,
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
-      key: scaffoldKey,
+      key: AppShell.scaffoldKey,
       drawer: const HomeDrawer(),
       // Opened only by the home header's menu button, not by an edge swipe
       // on other tabs.
