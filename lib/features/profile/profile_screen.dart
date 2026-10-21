@@ -6,6 +6,7 @@ import '../../core/theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/photo_gallery.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_providers.dart';
@@ -13,6 +14,7 @@ import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../home/widgets/home_header.dart';
 import '../widgets/site_layout.dart';
+import 'change_photo.dart';
 
 /// The signed-in user's own profile, laid out like the site's profile page:
 /// cover and photo, then one card with the name and follow counts, work and
@@ -80,14 +82,15 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 /// Cover photo with the round profile photo overlapping its lower edge
-/// (`ProfileCover`).
-class _Cover extends StatelessWidget {
+/// (`ProfileCover`). Tap either to see it full screen; the camera buttons
+/// change them right here, without going through Edit profile.
+class _Cover extends ConsumerWidget {
   const _Cover({required this.me});
 
   final MeProfile me;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SizedBox(
       height: 200,
       child: Stack(
@@ -107,7 +110,10 @@ class _Cover extends StatelessWidget {
               ),
               child: (me.coverPhotoUrl ?? '').isEmpty
                   ? null
-                  : AppNetworkImage(url: me.coverPhotoUrl, width: double.infinity, height: 150),
+                  : GestureDetector(
+                      onTap: () => FullScreenGallery.open(context, photos: [me.coverPhotoUrl!]),
+                      child: AppNetworkImage(url: me.coverPhotoUrl, width: double.infinity, height: 150),
+                    ),
             ),
           ),
           Positioned(
@@ -118,8 +124,23 @@ class _Cover extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 4),
               ),
-              child: Avatar(url: me.photoUrl, name: me.name, size: 96),
+              child: GestureDetector(
+                onTap: (me.photoUrl ?? '').isEmpty
+                    ? null
+                    : () => FullScreenGallery.open(context, photos: [me.photoUrl!]),
+                child: Avatar(url: me.photoUrl, name: me.name, size: 96),
+              ),
             ),
+          ),
+          Positioned(
+            right: 10,
+            top: 104,
+            child: ChangeCoverButton(onTap: () => changeProfilePhoto(context, ref, cover: true)),
+          ),
+          Positioned(
+            left: 16 + 104 - 34,
+            bottom: 2,
+            child: ChangeAvatarButton(onTap: () => changeProfilePhoto(context, ref, cover: false)),
           ),
         ],
       ),

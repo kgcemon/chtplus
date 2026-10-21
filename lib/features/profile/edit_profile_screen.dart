@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_exception.dart';
 import '../../core/theme.dart';
@@ -15,6 +14,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
 import '../widgets/form_fields.dart';
 import '../widgets/site_scaffold.dart';
+import 'change_photo.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -61,36 +61,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _relationshipStatus = me.relationshipStatus;
   }
 
-  Future<void> _pickPhoto({required bool cover}) async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: cover ? 1800 : 900,
-      imageQuality: 88,
-    );
-    if (picked == null || !mounted) return;
-
-    try {
-      await AppDialogs.withBlockingProgress(context, () async {
-        final repository = ref.read(meRepositoryProvider);
-        if (cover) {
-          await repository.uploadCoverPhoto(picked.path);
-        } else {
-          final url = await repository.uploadPhoto(picked.path);
-          final user = ref.read(currentUserProvider);
-          if (user != null) {
-            await ref
-                .read(authControllerProvider.notifier)
-                .updateLocalUser(user.copyWith(photoUrl: url));
-          }
-        }
-      });
-      ref.invalidate(meProfileProvider);
-      if (mounted) AppSnackbar.success(context, 'Photo updated.');
-    } on ApiException catch (error) {
-      if (mounted) AppSnackbar.error(context, error.message);
-    }
-  }
+  Future<void> _pickPhoto({required bool cover}) => changeProfilePhoto(context, ref, cover: cover);
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;

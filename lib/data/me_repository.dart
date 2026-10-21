@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 
 import '../core/api/api_client.dart';
 import '../core/utils/json.dart';
+import '../core/widgets/photo_crop_screen.dart';
 import '../models/engagement.dart';
 import '../models/public_profile.dart';
 import '../models/referral.dart';
@@ -52,17 +53,19 @@ class MeRepository {
   Future<void> updatePrivacy({required String field, required String privacy}) =>
       _api.post('/api/me/details/privacy', body: {'field': field, 'privacy': privacy});
 
-  Future<String> uploadPhoto(String filePath) async {
+  Future<String> uploadPhoto(String filePath, {PhotoCrop? crop}) async {
     final form = FormData.fromMap({
       'photo': await MultipartFile.fromFile(filePath),
+      ...?crop?.toFields(),
     });
     final body = await _api.upload('/api/me/photo', form);
     return body is Map<String, dynamic> ? body.str('photoUrl') : '';
   }
 
-  Future<String> uploadCoverPhoto(String filePath) async {
+  Future<String> uploadCoverPhoto(String filePath, {PhotoCrop? crop}) async {
     final form = FormData.fromMap({
       'photo': await MultipartFile.fromFile(filePath),
+      ...?crop?.toFields(),
     });
     final body = await _api.upload('/api/me/cover-photo', form);
     return body is Map<String, dynamic> ? body.str('coverPhotoUrl') : '';

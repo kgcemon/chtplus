@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/api/api_exception.dart';
 import '../../core/theme.dart';
 import '../../core/utils/data_labels.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/launchers.dart';
+import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
 import '../../models/listing.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/core_providers.dart';
 import '../../providers/feature_providers.dart';
 import '../../router.dart';
 import '../../data/moderation_repository.dart';
@@ -234,17 +238,55 @@ class _Meta extends StatelessWidget {
   }
 }
 
-/// Centered seller card: initial, name with Follow, a big phone button and
-/// "View profile" (`.listing-seller-card`).
-class _SellerCard extends StatelessWidget {
+/// Centered seller card: initial, name with Follow, Call and Message side by
+/// side, and "View profile" (`.listing-seller-card`).
+class _SellerCard extends ConsumerWidget {
   const _SellerCard({required this.listing});
 
   final Listing listing;
 
+  /// Opens (or starts) the in-app chat with the seller.
+  Future<void> _message(BuildContext context, WidgetRef ref, String userId, String name) async {
+    if (!ref.read(isSignedInProvider)) {
+      context.push(Routes.login);
+      return;
+    }
+    try {
+      final conversationId = await ref.read(chatRepositoryProvider).startConversation(userId);
+      if (context.mounted) context.push('/chat/$conversationId?name=${Uri.encodeComponent(name)}');
+    } on ApiException catch (e) {
+      if (context.mounted) {
+        AppSnackbar.error(context, e.code == 'chat_disabled' ? 'This seller has turned chat off — please call instead.' : e.message);
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final name = listing.sellerName ?? 'Seller';
     final phone = listing.sellerPhone ?? '';
+    final sellerId = listing.userId;
+    final canMessage = sellerId != null && ref.watch(currentUserProvider)?.id != sellerId;
+
+    final call = phone.isEmpty
+        ? null
+        : FilledButton(
+            onPressed: () => Launchers.call(context, phone),
+            style: _bigButton(FilledButton.styleFrom(backgroundColor: AppColors.forest)),
+            child: FittedBox(fit: BoxFit.scaleDown, child: Text('📞 $phone')),
+          );
+    final message = !canMessage
+        ? null
+        : OutlinedButton(
+            onPressed: () => _message(context, ref, sellerId!, name),
+            style: _bigButton(
+              OutlinedButton.styleFrom(
+                foregroundColor: AppColors.forest,
+                side: const BorderSide(color: AppColors.forest),
+              ),
+            ),
+            child: const Text('💬 Message'),
+          );
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
@@ -278,12 +320,16 @@ class _SellerCard extends StatelessWidget {
             style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
-          if (phone.isNotEmpty)
-            FilledButton(
-              onPressed: () => Launchers.call(context, phone),
-              style: _bigButton(FilledButton.styleFrom(backgroundColor: AppColors.forest)),
-              child: Text('📞 $phone'),
-            ),
+          if (call != null && message != null)
+            Row(
+              children: [
+                Expanded(child: call),
+                const SizedBox(width: 8),
+                Expanded(child: message),
+              ],
+            )
+          else if (call != null || message != null)
+            (call ?? message)!,
           if (listing.userId != null) ...[
             const SizedBox(height: 8),
             OutlinedButton(
@@ -299,7 +345,7 @@ class _SellerCard extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           const Text(
-            'Contact the seller directly by phone',
+            'Call or message the seller directly',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 11.5, height: 1.5, color: AppColors.textSecondary),
           ),

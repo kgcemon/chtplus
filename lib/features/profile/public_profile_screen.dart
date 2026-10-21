@@ -8,6 +8,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/photo_gallery.dart';
 import '../../data/moderation_repository.dart';
 import '../../models/public_profile.dart';
 import '../../models/user.dart';
@@ -254,10 +255,13 @@ class _Cover extends StatelessWidget {
               ),
               child: (profile.coverPhotoUrl ?? '').isEmpty
                   ? null
-                  : AppNetworkImage(
-                      url: profile.coverPhotoUrl,
-                      width: double.infinity,
-                      height: 150,
+                  : GestureDetector(
+                      onTap: () => FullScreenGallery.open(context, photos: [profile.coverPhotoUrl!]),
+                      child: AppNetworkImage(
+                        url: profile.coverPhotoUrl,
+                        width: double.infinity,
+                        height: 150,
+                      ),
                     ),
             ),
           ),
@@ -269,7 +273,12 @@ class _Cover extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surface, width: 4),
               ),
-              child: Avatar(url: profile.photoUrl, name: profile.name, size: 96, userId: profile.id),
+              child: GestureDetector(
+                onTap: (profile.photoUrl ?? '').isEmpty
+                    ? null
+                    : () => FullScreenGallery.open(context, photos: [profile.photoUrl!]),
+                child: Avatar(url: profile.photoUrl, name: profile.name, size: 96, userId: profile.id),
+              ),
             ),
           ),
         ],
