@@ -8,6 +8,7 @@ import '../../core/utils/launchers.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/call_pulse.dart';
 import '../../models/donor.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
@@ -174,11 +175,11 @@ class _ContentState extends ConsumerState<_Content> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (d.eligible)
-                    FilledButton(
+                    CallPulse(child: FilledButton(
                       onPressed: () => Launchers.call(context, d.phone),
                       style: smallButtonStyle(block: true),
                       child: const Text('📞 Call'),
-                    )
+                    ))
                   else
                     Container(
                       height: 40,

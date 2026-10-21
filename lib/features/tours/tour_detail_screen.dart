@@ -9,6 +9,7 @@ import '../../core/utils/launchers.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/call_pulse.dart';
 import '../../models/tour.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
@@ -315,7 +316,7 @@ class _TourDetailScreenState extends ConsumerState<TourDetailScreen> {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  SiteButton(label: '📞 Call', onPressed: () => Launchers.call(context, t.contactPhone)),
+                  CallPulse(child: SiteButton(label: '📞 Call', onPressed: () => Launchers.call(context, t.contactPhone))),
                   // Organizer tours: in-app chat (not on your own tour).
                   // Official tours have no organizer account: WhatsApp the team.
                   if (!d.isOrganizer)

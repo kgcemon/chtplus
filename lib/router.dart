@@ -38,6 +38,10 @@ import 'features/settings/about_screen.dart';
 import 'features/settings/blocked_users_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/shell/app_shell.dart';
+import 'features/offers/my_codes_screen.dart';
+import 'features/offers/offer_detail_screen.dart';
+import 'features/offers/offers_screen.dart';
+import 'features/offers/partner_screen.dart';
 import 'features/tours/my_trips_screen.dart';
 import 'features/tours/organize_tour_screen.dart';
 import 'features/tours/tour_detail_screen.dart';
@@ -68,6 +72,7 @@ class Routes {
   static const ask = '/ask';
   static const blueTick = '/blue-tick';
   static const tours = '/tours';
+  static const offers = '/offers';
   static const settings = '/settings';
   static const about = '/about';
 
@@ -116,6 +121,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         Routes.refer,
         '/tours/organize',
         '/tours/my',
+        '/offers/my',
+        '/offers/partner',
         Routes.myServices,
         Routes.myListings,
         Routes.myBiodata,
@@ -348,6 +355,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.coins,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const CoinsScreen(),
+      ),
+      // Partner offers. The fixed paths come before /offers/:id.
+      GoRoute(
+        path: Routes.offers,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const OffersScreen(),
+      ),
+      GoRoute(
+        path: '/offers/my',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const MyCodesScreen(),
+      ),
+      GoRoute(
+        path: '/offers/partner',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const PartnerScreen(),
+      ),
+      GoRoute(
+        path: '/offers/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => OfferDetailScreen(id: state.pathParameters['id']!),
       ),
       // Group tours. The fixed paths come before /tours/:id.
       GoRoute(

@@ -8,6 +8,7 @@ import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/html_text.dart';
 import '../../core/widgets/photo_gallery.dart';
+import '../../core/widgets/call_pulse.dart';
 import '../../models/service.dart';
 import '../../providers/feature_providers.dart';
 import '../../data/moderation_repository.dart';
@@ -128,11 +129,11 @@ class _Content extends StatelessWidget {
                     runSpacing: 8,
                     children: [
                       if ((s.phone ?? '').isNotEmpty)
-                        FilledButton(
+                        CallPulse(child: FilledButton(
                           onPressed: () => Launchers.call(context, s.phone),
                           style: smallButtonStyle(),
                           child: const Text('📞 Call'),
-                        ),
+                        )),
                       if (s.userId != null)
                         OutlinedButton(
                           onPressed: () => context.push('/u/${s.userId}'),

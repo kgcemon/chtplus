@@ -9,6 +9,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/utils/launchers.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/call_pulse.dart';
 import '../../models/biodata.dart';
 import '../../models/donor.dart';
 import '../../models/listing.dart';
@@ -136,7 +137,7 @@ class ServiceCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              FilledButton(
+              CallPulse(child: FilledButton(
                 onPressed: () => Launchers.call(context, service.phone),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.forest,
@@ -147,7 +148,7 @@ class ServiceCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: const Text('Call'),
-              ),
+              )),
             ],
           ),
         ),
@@ -281,7 +282,7 @@ class ListingCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 5),
-              OutlinedButton(
+              CallPulse(child: OutlinedButton(
                 onPressed: () => Launchers.call(context, listing.sellerPhone),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.forest,
@@ -293,7 +294,7 @@ class ListingCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 child: const Text('Call'),
-              ),
+              )),
             ],
           ),
         ),
@@ -363,7 +364,7 @@ class DonorCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.card),
         side: BorderSide(
           width: 2,
-          color: eligible ? const Color(0xCC2F9E57) : const Color(0xCCD0342C),
+          color: eligible ? const Color(0x662F9E57) : const Color(0x66D0342C),
         ),
       ),
       clipBehavior: Clip.antiAlias,
@@ -445,7 +446,7 @@ class DonorCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (eligible)
-                      FilledButton(
+                      CallPulse(child: FilledButton(
                         onPressed: () => Launchers.call(context, donor.phone),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.forest,
@@ -458,7 +459,7 @@ class DonorCard extends StatelessWidget {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         child: const Text('Call'),
-                      )
+                      ))
                     else
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),

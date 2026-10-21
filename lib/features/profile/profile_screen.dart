@@ -15,6 +15,7 @@ import '../../router.dart';
 import '../home/widgets/home_header.dart';
 import '../widgets/site_layout.dart';
 import 'change_photo.dart';
+import 'interests_sheet.dart';
 
 /// The signed-in user's own profile, laid out like the site's profile page:
 /// cover and photo, then one card with the name and follow counts, work and
@@ -288,8 +289,6 @@ class _ProfileCard extends ConsumerWidget {
             onTap: () => go(Routes.myBiodata),
           ),
           divider,
-          _Row(icon: '💬', text: 'Chat', button: 'Inbox', onTap: () => go(Routes.chat)),
-          divider,
           _Row(
             icon: '🔖',
             text: 'Saved (${stats.savedCount})',
@@ -300,8 +299,10 @@ class _ProfileCard extends ConsumerWidget {
           _Row(icon: '🪙', text: '$coins coins', button: 'Buy coins', onTap: () => go(Routes.coins)),
           divider,
           _Row(
-            icon: '✔️',
+            icon: '',
+            leading: const VerifiedBadge(active: true, size: 18),
             text: me.blueBadge ? 'Blue tick is on' : 'Get the blue tick',
+            detail: me.blueBadge ? 'Extend it before it runs out' : 'Show a verified blue tick next to your name',
             button: me.blueBadge ? 'Extend' : 'Get it',
             onTap: () => go(Routes.blueTick),
           ),
@@ -315,6 +316,14 @@ class _ProfileCard extends ConsumerWidget {
             ),
             divider,
           ],
+          _Row(
+            icon: '🎯',
+            text: 'Interests',
+            detail: interestsSummary(ref.watch(currentUserProvider)?.homeInterests ?? const []),
+            button: 'Change',
+            onTap: () => showEditInterestsSheet(context),
+          ),
+          divider,
           _Row(
             icon: '⚙️',
             text: 'Settings & privacy',
@@ -360,9 +369,13 @@ class _Row extends StatelessWidget {
     required this.button,
     required this.onTap,
     this.detail,
+    this.leading,
   });
 
   final String icon;
+
+  /// Drawn instead of the emoji [icon] when set (e.g. the real blue tick).
+  final Widget? leading;
   final String text;
   final String? detail;
   final String button;
@@ -374,7 +387,9 @@ class _Row extends StatelessWidget {
       children: [
         SizedBox(
           width: 22,
-          child: Text(icon, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
+          child: leading != null
+              ? Center(child: leading)
+              : Text(icon, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18)),
         ),
         const SizedBox(width: 12),
         Expanded(

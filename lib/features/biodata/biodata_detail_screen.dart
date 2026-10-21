@@ -12,6 +12,7 @@ import '../../core/utils/launchers.dart';
 import '../../core/widgets/app_network_image.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/photo_gallery.dart';
+import '../../core/widgets/call_pulse.dart';
 import '../../models/biodata.dart';
 import '../../providers/catalog_providers.dart';
 import '../../providers/core_providers.dart';
@@ -753,7 +754,7 @@ class BiodataDocumentView extends StatelessWidget {
                 ? null
                 : Padding(
                     padding: const EdgeInsets.only(top: 16),
-                    child: FilledButton(
+                    child: CallPulse(child: FilledButton(
                       onPressed: () => Launchers.call(context, b.guardianPhone),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.forest,
@@ -761,7 +762,7 @@ class BiodataDocumentView extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                       child: const Text('📞 Call guardian'),
-                    ),
+                    )),
                   ),
           ),
         ],

@@ -226,7 +226,12 @@ class _AskScreenState extends ConsumerState<AskScreen> {
               children: [
                 for (final ex in examples)
                   ActionChip(
-                    label: Text(ex, style: const TextStyle(fontSize: 13)),
+                    // Explicit colour: the theme's chip label style has none,
+                    // and on some phones the text came out white on white.
+                    label: Text(
+                      ex,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.text),
+                    ),
                     backgroundColor: AppColors.surface,
                     side: const BorderSide(color: AppColors.border),
                     shape: const StadiumBorder(),

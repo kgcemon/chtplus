@@ -9,6 +9,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/utils/launchers.dart';
 import '../../core/widgets/app_snackbar.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/call_pulse.dart';
 import '../../models/listing.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/core_providers.dart';
@@ -270,11 +271,11 @@ class _SellerCard extends ConsumerWidget {
 
     final call = phone.isEmpty
         ? null
-        : FilledButton(
+        : CallPulse(child: FilledButton(
             onPressed: () => Launchers.call(context, phone),
             style: _bigButton(FilledButton.styleFrom(backgroundColor: AppColors.forest)),
             child: FittedBox(fit: BoxFit.scaleDown, child: Text('📞 $phone')),
-          );
+          ));
     final message = !canMessage
         ? null
         : OutlinedButton(

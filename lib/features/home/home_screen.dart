@@ -6,6 +6,7 @@ import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../core/utils/launchers.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/call_pulse.dart';
 import '../../models/catalog.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/catalog_providers.dart';
@@ -446,7 +447,7 @@ class _FooterCta extends StatelessWidget {
               style: TextStyle(color: Color(0xD9FFFFFF), fontSize: 13.5, height: 1.3),
             ),
             const SizedBox(height: 18),
-            FilledButton(
+            CallPulse(child: FilledButton(
               onPressed: () => Launchers.call(context, AppConfig.supportPhone),
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.white,
@@ -458,7 +459,7 @@ class _FooterCta extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               child: const Text('\u{1F4DE} Contact'),
-            ),
+            ), color: Colors.white),
           ],
         ),
       ),
