@@ -16,7 +16,7 @@ class QuickNav extends StatelessWidget {
     _QuickItem('🛒', 'Marketplace', Routes.marketplace, tab: true),
     _QuickItem('💍', 'Matrimony', Routes.biodata, tab: true),
     _QuickItem('🧳', 'Tour & Travels', Routes.tours),
-    _QuickItem('🎁', 'Offers', Routes.offers),
+    _QuickItem('🔥', 'Hot Discount Offer', Routes.offers),
   ];
 
   @override

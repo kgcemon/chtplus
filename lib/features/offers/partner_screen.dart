@@ -46,7 +46,7 @@ class PartnerScreen extends ConsumerWidget {
     final state = ref.watch(partnerProvider);
     return SiteScaffold(
       title: 'CHT Plus partner',
-      subtitle: 'Give special offers to CHT Plus users and bring new customers to your business',
+      subtitle: 'Give Hot Discount Offers to CHT Plus users and bring new customers to your business',
       body: state.when(
         loading: () => const AppLoader(),
         error: (e, _) => ErrorView(message: '$e', onRetry: () => ref.invalidate(partnerProvider)),
@@ -96,8 +96,10 @@ class _ApplyForm extends ConsumerStatefulWidget {
 
 class _ApplyFormState extends ConsumerState<_ApplyForm> {
   final _key = GlobalKey<FormState>();
-  final _c = {for (final k in ['businessName', 'phone', 'area', 'address', 'link', 'about']) k: TextEditingController()};
+  final _c = {for (final k in ['businessName', 'phone', 'address', 'link', 'about']) k: TextEditingController()};
   String? _category;
+  String? _district;
+  String? _area;
   List<String> _logo = const [];
   bool _busy = false;
 
@@ -121,10 +123,14 @@ class _ApplyFormState extends ConsumerState<_ApplyForm> {
       AppSnackbar.error(context, 'Choose the type of business.');
       return;
     }
+    if (_district == null || _area == null) {
+      AppSnackbar.error(context, 'Choose the district and thana.');
+      return;
+    }
     setState(() => _busy = true);
     try {
       await ref.read(offerRepositoryProvider).applyAsPartner(
-        {for (final e in _c.entries) e.key: e.value.text.trim(), 'category': _category!},
+        {for (final e in _c.entries) e.key: e.value.text.trim(), 'category': _category!, 'district': _district!, 'area': _area!},
         logoPath: _logo.isEmpty ? null : _logo.first,
       );
       ref.invalidate(partnerProvider);
@@ -185,9 +191,26 @@ class _ApplyFormState extends ConsumerState<_ApplyForm> {
           ),
           FormRowField(label: 'Phone', required: true, child: TextFormField(controller: _c['phone'], keyboardType: TextInputType.phone, validator: need)),
           FormRowField(
-            label: 'Area',
+            label: 'District',
             required: true,
-            child: TextFormField(controller: _c['area'], maxLength: 150, validator: need, decoration: const InputDecoration(hintText: 'e.g. Khagrachari Sadar')),
+            child: DistrictPicker(
+              value: _district,
+              includeEmpty: false,
+              onChanged: (v) => setState(() {
+                _district = v;
+                _area = null;
+              }),
+            ),
+          ),
+          FormRowField(
+            label: 'Thana',
+            required: true,
+            child: UpazilaPicker(
+              districtName: _district,
+              value: _area,
+              includeEmpty: false,
+              onChanged: (v) => setState(() => _area = v),
+            ),
           ),
           FormRowField(
             label: 'Full address (optional)',
@@ -294,7 +317,7 @@ class _PartnerHomeState extends ConsumerState<_PartnerHome> {
               children: [
                 Text(s.businessName ?? '', style: const TextStyle(fontWeight: FontWeight.w800)),
                 Text(
-                  '${s.category ?? ''} · ${s.area ?? ''} — your offers go live right away',
+                  '${s.category ?? ''} · ${[s.area ?? '', s.district ?? ''].where((x) => x.isNotEmpty).join(', ')} — your offers go live right away',
                   style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
               ],

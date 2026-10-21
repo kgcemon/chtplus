@@ -150,7 +150,7 @@ class OfferCardTile extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(offer.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text('📍 ${offer.partner.area}', style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                Text('📍 ${offer.partner.place}', style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
                 const Divider(height: 18, color: AppColors.border),
                 Row(
                   children: [

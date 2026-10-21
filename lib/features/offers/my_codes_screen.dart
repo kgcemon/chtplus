@@ -35,7 +35,7 @@ class MyCodesScreen extends ConsumerWidget {
               if (list.isEmpty) ...[
                 const EmptyNote('You haven’t got any offer codes yet.'),
                 const SizedBox(height: 8),
-                Center(child: SiteButton(label: 'See offers', onPressed: () => context.push('/offers'))),
+                Center(child: SiteButton(label: 'See Hot Discount Offers', onPressed: () => context.push('/offers'))),
               ] else
                 for (final c in list) ...[
                   AppCard(

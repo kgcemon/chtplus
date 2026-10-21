@@ -100,6 +100,7 @@ class OfferPartner {
     required this.userId,
     required this.name,
     this.category = '',
+    this.district,
     this.area = '',
     this.address,
     this.phone = '',
@@ -110,16 +111,23 @@ class OfferPartner {
   final String userId;
   final String name;
   final String category;
+
+  /// Bengali district name; [area] is the thana.
+  final String? district;
   final String area;
   final String? address;
   final String phone;
   final String? logoUrl;
   final bool blueBadge;
 
+  /// "খাগড়াছড়ি সদর, খাগড়াছড়ি" — thana then district.
+  String get place => [area, district ?? ''].where((s) => s.isNotEmpty).join(', ');
+
   factory OfferPartner.fromJson(Map<String, dynamic> json) => OfferPartner(
         userId: json.str('userId'),
         name: json.str('name', fallback: 'Partner'),
         category: json.str('category'),
+        district: json.strOrNull('district'),
         area: json.str('area'),
         address: json.strOrNull('address'),
         phone: json.str('phone'),
@@ -219,6 +227,7 @@ class PartnerState {
     this.status,
     this.businessName,
     this.category,
+    this.district,
     this.area,
     this.adminNote,
     this.offers = const [],
@@ -230,6 +239,7 @@ class PartnerState {
   final String? status;
   final String? businessName;
   final String? category;
+  final String? district;
   final String? area;
   final String? adminNote;
   final List<Offer> offers;
@@ -242,6 +252,7 @@ class PartnerState {
       status: p?.strOrNull('status'),
       businessName: p?.strOrNull('businessName'),
       category: p?.strOrNull('category'),
+      district: p?.strOrNull('district'),
       area: p?.strOrNull('area'),
       adminNote: p?.strOrNull('adminNote'),
       offers: parseList(json['offers'], Offer.fromJson),

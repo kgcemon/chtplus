@@ -6,16 +6,18 @@ import '../../core/theme.dart';
 import '../../core/widgets/common.dart';
 import '../../models/offer.dart';
 import '../../providers/core_providers.dart';
+import '../widgets/form_fields.dart';
 import '../widgets/site_layout.dart';
 import '../widgets/site_scaffold.dart';
 import 'offer_widgets.dart';
 
+/// Keyed by (search, category, district, thana).
 final offersProvider =
-    FutureProvider.autoDispose.family<({List<Offer> offers, List<String> categories}), (String, String)>(
-  (ref, key) => ref.watch(offerRepositoryProvider).list(q: key.$1, category: key.$2),
+    FutureProvider.autoDispose.family<({List<Offer> offers, List<String> categories}), (String, String, String, String)>(
+  (ref, key) => ref.watch(offerRepositoryProvider).list(q: key.$1, category: key.$2, district: key.$3, area: key.$4),
 );
 
-/// Partner offers, like the site's /offers page.
+/// Hot Discount Offer — partner offers, like the site's /offers page.
 class OffersScreen extends ConsumerStatefulWidget {
   const OffersScreen({super.key});
 
@@ -27,6 +29,8 @@ class _OffersScreenState extends ConsumerState<OffersScreen> {
   final _search = TextEditingController();
   String _q = '';
   String _category = '';
+  String? _district;
+  String? _area;
 
   @override
   void dispose() {
@@ -36,11 +40,11 @@ class _OffersScreenState extends ConsumerState<OffersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final key = (_q, _category);
+    final key = (_q, _category, _district ?? '', _area ?? '');
     final data = ref.watch(offersProvider(key));
     final categories = data.valueOrNull?.categories ?? const <String>[];
     return SiteScaffold(
-      title: '🎁 Offers',
+      title: '🔥 Hot Discount Offer',
       subtitle: 'Special prices from local businesses — only through CHT Plus',
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(offersProvider(key).future),
@@ -55,6 +59,30 @@ class _OffersScreenState extends ConsumerState<OffersScreen> {
               ],
             ),
             const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: DistrictPicker(
+                    value: _district,
+                    onChanged: (v) => setState(() {
+                      _district = v;
+                      _area = null;
+                    }),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: UpazilaPicker(
+                    districtName: _district,
+                    value: _area,
+                    emptyLabel: 'All thanas',
+                    placeholder: 'All thanas',
+                    onChanged: (v) => setState(() => _area = v),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             TextField(
               controller: _search,
               textInputAction: TextInputAction.search,
@@ -111,7 +139,7 @@ class _OffersScreenState extends ConsumerState<OffersScreen> {
               data: (d) => d.offers.isEmpty
                   ? Column(
                       children: [
-                        EmptyNote(_q.isEmpty && _category.isEmpty ? 'No offers right now — check back soon.' : 'No offers match your search.'),
+                        EmptyNote(_q.isEmpty && _category.isEmpty && _district == null ? 'No offers right now — check back soon.' : 'No offers match your search.'),
                         const SizedBox(height: 8),
                         SiteButton(label: 'Own a business? Give an offer', outlined: true, onPressed: () => context.push('/offers/partner')),
                       ],

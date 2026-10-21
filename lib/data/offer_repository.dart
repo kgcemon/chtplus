@@ -11,10 +11,18 @@ class OfferRepository {
 
   final ApiClient _api;
 
-  Future<({List<Offer> offers, List<String> categories})> list({String q = '', String category = ''}) async {
+  /// [district] / [area] (thana) are the Bengali names, as the pickers give them.
+  Future<({List<Offer> offers, List<String> categories})> list({
+    String q = '',
+    String category = '',
+    String district = '',
+    String area = '',
+  }) async {
     final body = await _api.get('/api/offers', query: {
       if (q.trim().isNotEmpty) 'q': q.trim(),
       if (category.isNotEmpty) 'category': category,
+      if (district.isNotEmpty) 'district': district,
+      if (area.isNotEmpty) 'area': area,
     });
     final map = body is Map<String, dynamic> ? body : const <String, dynamic>{};
     return (offers: parseList(map['offers'], Offer.fromJson), categories: map.stringList('categories'));

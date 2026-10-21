@@ -39,7 +39,7 @@ class OfferDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(offerDetailProvider(id));
     return SiteScaffold(
-      title: 'Offer',
+      title: '🔥 Hot Discount Offer',
       body: ViewTracker(
         type: 'offer',
         id: id,
@@ -258,7 +258,7 @@ class _ContentState extends ConsumerState<_Content> {
                             ],
                           ),
                           Text(
-                            '${p.category} · 📍 ${p.area}${(p.address ?? '').isEmpty ? '' : ', ${p.address}'}',
+                            '${p.category} · 📍 ${p.place}${(p.address ?? '').isEmpty ? '' : ', ${p.address}'}',
                             style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
                           ),
                         ],
