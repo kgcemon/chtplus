@@ -8,6 +8,7 @@ import '../../models/offer.dart';
 import '../../providers/core_providers.dart';
 import '../widgets/site_layout.dart';
 import '../widgets/site_scaffold.dart';
+import 'offer_code_card.dart';
 import 'offer_widgets.dart';
 
 final myOfferClaimsProvider = FutureProvider.autoDispose<List<OfferClaim>>(
@@ -57,7 +58,12 @@ class MyCodesScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        CodeBoxCard(claim: c),
+                        // Active codes as the coupon card (with "Save image"); used
+                        // and expired ones as the plain crossed-out box.
+                        if (c.status == 'active' && c.offer != null)
+                          OfferCodeCard(claim: c, offer: c.offer!)
+                        else
+                          CodeBoxCard(claim: c),
                       ],
                     ),
                   ),

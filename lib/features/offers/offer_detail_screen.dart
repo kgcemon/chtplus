@@ -15,6 +15,7 @@ import '../../providers/core_providers.dart';
 import '../../router.dart';
 import '../widgets/site_scaffold.dart';
 import '../widgets/view_count.dart';
+import 'offer_code_card.dart';
 import 'offer_widgets.dart';
 
 final offerDetailProvider = FutureProvider.autoDispose.family<OfferDetail, String>(
@@ -185,7 +186,7 @@ class _ContentState extends ConsumerState<_Content> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (d.activeClaim != null)
-                    CodeBoxCard(claim: d.activeClaim!)
+                    OfferCodeCard(claim: d.activeClaim!, offer: o)
                   else if (d.canClaim || d.reason == 'login') ...[
                     FilledButton(
                       onPressed: _busy ? null : _claim,
